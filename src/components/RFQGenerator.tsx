@@ -24,7 +24,7 @@ interface RFQGeneratorProps {
 }
 
 const RFQGenerator: React.FC<RFQGeneratorProps> = ({ onRFQGenerated, data }) => {
-  const { user, subscription, incrementRFQCount, checkSubscription } = useAuth();
+  const { user, subscription, incrementRFQCount, checkSubscription, effectiveRfqCount } = useAuth();
   const [formData, setFormData] = useState({
     projectTitle: '',
     projectDescription: '',
@@ -43,7 +43,7 @@ const RFQGenerator: React.FC<RFQGeneratorProps> = ({ onRFQGenerated, data }) => 
   const rfqCount = subscription.rfq_count || 0;
   const rfqLimit = subscription.rfq_limit;
   
-  const canGenerate = rfqLimit === null || rfqCount < rfqLimit;
+  const canGenerate = rfqLimit === null || effectiveRfqCount < rfqLimit;
 
   // Process data only once when component mounts with data
   React.useEffect(() => {
@@ -146,7 +146,7 @@ const RFQGenerator: React.FC<RFQGeneratorProps> = ({ onRFQGenerated, data }) => 
 
   const getRemainingText = () => {
     if (rfqLimit === null) return 'Unlimited';
-    return `${Math.max(0, rfqLimit - rfqCount)} remaining`;
+    return `${Math.max(0, rfqLimit - effectiveRfqCount)} remaining`;
   };
 
   return (
@@ -166,7 +166,7 @@ const RFQGenerator: React.FC<RFQGeneratorProps> = ({ onRFQGenerated, data }) => 
         <Alert>
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
-            Demo Mode: {rfqCount}/{rfqLimit || 1} RFQ generations used.
+            Demo Mode: {effectiveRfqCount}/{rfqLimit || 1} RFQ generations used.
             {!canGenerate && (
               <span className="text-red-600 font-medium ml-2">
                 Upgrade to continue generating RFQs.

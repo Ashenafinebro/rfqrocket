@@ -15,7 +15,7 @@ interface ProcessedData {
 }
 
 const Dashboard = () => {
-  const { user, subscription, loading, subscriptionLoading, sessionRfqCount } = useAuth();
+  const { user, subscription, loading, subscriptionLoading, effectiveRfqCount } = useAuth();
   const navigate = useNavigate();
   const [processedData, setProcessedData] = useState<ProcessedData | null>(null);
 
@@ -25,11 +25,10 @@ const Dashboard = () => {
   const rfqLimit = subscription.rfq_limit;
   const proposalLimit = subscription.proposal_limit;
 
-  // Use session RFQ count for demo limit check to persist across sign-out/sign-in
-  const effectiveRfqCount = Math.max(sessionRfqCount, rfqCount);
+  // Use effectiveRfqCount for demo limit check
   const demoLimitReached = isDemo && rfqLimit !== null && effectiveRfqCount >= rfqLimit;
 
-  console.log('Dashboard render - sessionRfqCount:', sessionRfqCount, 'rfqCount:', rfqCount, 'effectiveRfqCount:', effectiveRfqCount, 'demoLimitReached:', demoLimitReached);
+  console.log('Dashboard render - effectiveRfqCount:', effectiveRfqCount, 'rfqCount:', rfqCount, 'demoLimitReached:', demoLimitReached);
 
   const handleFileProcessed = async (data: ProcessedData) => {
     setProcessedData(data);

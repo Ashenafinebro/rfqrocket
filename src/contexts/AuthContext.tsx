@@ -35,7 +35,7 @@ interface AuthContextType {
   incrementRFQCount: () => Promise<void>;
   incrementProposalCount: () => Promise<void>;
   subscriptionLoading: boolean;
-  sessionRfqCount: number;
+  effectiveRfqCount: number;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -63,6 +63,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     rfq_limit: 1,
     proposal_limit: 1
   });
+
+  // Calculate effective RFQ count (session + database working together)
+  const effectiveRfqCount = Math.max(sessionRfqCount, subscription.rfq_count || 0);
 
   const storeRfqCountInSession = (count: number) => {
     setSessionRfqCount(count);
@@ -135,15 +138,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       console.log('Subscription check response:', data);
       
-      // Get existing session RFQ count
-      const existingSessionCount = getSessionRfqCount();
+      // Get session RFQ count
+      const currentSessionCount = getSessionRfqCount();
       const databaseRfqCount = data.rfq_count || 0;
       
-      // Use the higher count to prevent bypassing demo limits
-      const effectiveRfqCount = Math.max(existingSessionCount, databaseRfqCount);
-      storeRfqCountInSession(effectiveRfqCount);
+      // Sync session count with database - use the higher value to prevent bypassing limits
+      const syncedCount = Math.max(currentSessionCount, databaseRfqCount);
       
-      console.log('Session RFQ count:', existingSessionCount, 'Database RFQ count:', databaseRfqCount, 'Effective count:', effectiveRfqCount);
+      // Update session storage only if we need to increase it
+      if (syncedCount > currentSessionCount) {
+        storeRfqCountInSession(syncedCount);
+      }
+      
+      console.log('Session RFQ count:', currentSessionCount, 'Database RFQ count:', databaseRfqCount, 'Synced count:', syncedCount);
       
       // Set usage limits based on plan
       let rfqLimit = 1; // Free/demo default
@@ -186,18 +193,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     try {
       console.log('Incrementing RFQ count for user:', user.id);
+      
+      // Increment session count immediately for UI responsiveness
+      const newSessionCount = sessionRfqCount + 1;
+      storeRfqCountInSession(newSessionCount);
+      
+      // Also increment in database
       await supabase.functions.invoke('increment-usage', {
         body: { type: 'rfq' }
       });
       
-      // Update session count immediately
-      const newCount = sessionRfqCount + 1;
-      storeRfqCountInSession(newCount);
-      
-      await checkSubscription(); // Refresh subscription data
+      // Refresh subscription data to sync database count
+      await checkSubscription();
       console.log('RFQ count incremented successfully');
     } catch (error) {
       console.error('Error incrementing RFQ count:', error);
+      // Revert session count if database update failed
+      storeRfqCountInSession(sessionRfqCount);
     }
   };
 
@@ -274,7 +286,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             rfq_limit: 1,
             proposal_limit: 1
           });
-          // Don't reset session RFQ count - let it persist across sign-ins
+          // Session RFQ count persists across sign-ins
           // Use setTimeout to ensure the subscription check happens after state update
           setTimeout(() => {
             checkSubscription();
@@ -283,7 +295,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         if (event === 'SIGNED_OUT') {
           setAppliedPromo(null);
-          // Don't clear session RFQ count on sign out
+          // Session RFQ count persists to prevent demo bypass
           setSubscription({
             subscribed: false,
             plan: null,
@@ -316,7 +328,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       signInWithGoogle,
       incrementRFQCount,
       incrementProposalCount,
-      sessionRfqCount
+      effectiveRfqCount
     }}>
       {children}
     </AuthContext.Provider>
