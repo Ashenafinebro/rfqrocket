@@ -16,7 +16,7 @@ interface ProcessedData {
 }
 
 const Dashboard = () => {
-  const { user, subscription } = useAuth();
+  const { user, subscription, incrementRFQCount } = useAuth();
   const navigate = useNavigate();
   const [demoUsed, setDemoUsed] = useState(false);
   const [processedData, setProcessedData] = useState<ProcessedData | null>(null);
@@ -27,12 +27,23 @@ const Dashboard = () => {
   const rfqLimit = subscription.rfq_limit;
   const proposalLimit = subscription.proposal_limit;
 
-  const handleFileProcessed = (data: ProcessedData) => {
+  // Check if demo user has reached RFQ limit
+  const demoLimitReached = isDemo && rfqCount >= (rfqLimit || 1);
+
+  const handleFileProcessed = async (data: ProcessedData) => {
     setProcessedData(data);
     setDemoUsed(true);
+    
+    // Increment RFQ count when successfully processed
+    await incrementRFQCount();
   };
 
   const handleStartHere = () => {
+    if (demoLimitReached) {
+      navigate('/pricing');
+      return;
+    }
+    
     const uploadSection = document.getElementById('rfq-section');
     if (uploadSection) {
       uploadSection.scrollIntoView({ behavior: 'smooth' });
@@ -53,15 +64,29 @@ const Dashboard = () => {
       <div className="max-w-6xl mx-auto">
         {/* Demo Mode Banner - Only show for non-subscribers */}
         {isDemo && (
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-8">
+          <div className={`border rounded-lg p-4 mb-8 ${
+            demoLimitReached 
+              ? 'bg-red-50 border-red-200' 
+              : 'bg-amber-50 border-amber-200'
+          }`}>
             <div className="flex items-center justify-between">
               <div className="flex items-start gap-3">
-                <AlertTriangle className="h-5 w-5 text-amber-500 mt-0.5" />
+                <AlertTriangle className={`h-5 w-5 mt-0.5 ${
+                  demoLimitReached ? 'text-red-500' : 'text-amber-500'
+                }`} />
                 <div>
-                  <h3 className="font-semibold text-amber-800">Demo Mode Active</h3>
-                  <p className="text-amber-700 text-sm mt-1">
-                    You have {getRemainingText(rfqCount, rfqLimit)} RFQ generations in demo mode. 
-                    Downloads are disabled in demo mode.
+                  <h3 className={`font-semibold ${
+                    demoLimitReached ? 'text-red-800' : 'text-amber-800'
+                  }`}>
+                    {demoLimitReached ? 'Demo Limit Reached' : 'Demo Mode Active'}
+                  </h3>
+                  <p className={`text-sm mt-1 ${
+                    demoLimitReached ? 'text-red-700' : 'text-amber-700'
+                  }`}>
+                    {demoLimitReached 
+                      ? 'You have used your free RFQ generation. Upgrade to continue creating RFQs.'
+                      : `You have ${getRemainingText(rfqCount, rfqLimit)} RFQ generations in demo mode. Downloads are disabled in demo mode.`
+                    }
                   </p>
                 </div>
               </div>
@@ -117,29 +142,38 @@ const Dashboard = () => {
 
         {/* Quick Actions */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          <Card className="shadow-sm border-blue-200">
-            <CardHeader className="bg-blue-50">
-              <CardTitle className="flex items-center gap-2 text-blue-900">
-                <div className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-bold">
+          <Card className={`shadow-sm ${demoLimitReached ? 'border-gray-300 opacity-75' : 'border-blue-200'}`}>
+            <CardHeader className={demoLimitReached ? 'bg-gray-50' : 'bg-blue-50'}>
+              <CardTitle className={`flex items-center gap-2 ${demoLimitReached ? 'text-gray-600' : 'text-blue-900'}`}>
+                <div className={`w-6 h-6 text-white rounded-full flex items-center justify-center text-sm font-bold ${
+                  demoLimitReached ? 'bg-gray-400' : 'bg-blue-600'
+                }`}>
                   1
                 </div>
                 <Upload className="h-5 w-5" />
                 Generate RFQ
               </CardTitle>
-              <CardDescription className="text-blue-700">
-                Upload solicitation documents to create professional RFQs
+              <CardDescription className={demoLimitReached ? 'text-gray-600' : 'text-blue-700'}>
+                {demoLimitReached 
+                  ? 'Upgrade to generate more RFQ documents'
+                  : 'Upload solicitation documents to create professional RFQs'
+                }
               </CardDescription>
             </CardHeader>
             <CardContent className="p-4">
               <p className="text-sm text-gray-600 mb-4">
-                Transform government solicitations into vendor-ready Request for Quote documents.
+                {demoLimitReached 
+                  ? 'You have reached your demo limit. Upgrade to continue using this feature.'
+                  : 'Transform government solicitations into vendor-ready Request for Quote documents.'
+                }
               </p>
               <Button 
                 variant="outline" 
                 className="w-full"
                 onClick={handleStartHere}
+                disabled={demoLimitReached}
               >
-                Start Here
+                {demoLimitReached ? 'Upgrade Required' : 'Start Here'}
               </Button>
             </CardContent>
           </Card>
@@ -170,19 +204,34 @@ const Dashboard = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Main Upload Area */}
-          <Card id="rfq-section" className="shadow-sm">
+          <Card id="rfq-section" className={`shadow-sm ${demoLimitReached ? 'opacity-50 pointer-events-none' : ''}`}>
             <CardHeader className="bg-blue-50 border-b">
               <CardTitle className="flex items-center gap-2">
                 <Upload className="h-5 w-5" />
                 Upload Your Solicitation Document
               </CardTitle>
               <CardDescription>
-                Upload your solicitation document and extract key information
-                {isDemo && ' (Demo - download/export disabled)'}
+                {demoLimitReached 
+                  ? 'Demo limit reached - upgrade to continue'
+                  : `Upload your solicitation document and extract key information${isDemo ? ' (Demo - download/export disabled)' : ''}`
+                }
               </CardDescription>
             </CardHeader>
             <CardContent className="p-6">
-              <FileUpload onFileProcessed={handleFileProcessed} />
+              {demoLimitReached ? (
+                <div className="flex items-center justify-center h-64 border-2 border-dashed border-gray-200 rounded-xl bg-gray-50">
+                  <div className="text-center text-gray-500">
+                    <AlertTriangle className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p className="text-lg font-medium">Demo Limit Reached</p>
+                    <p className="text-sm mb-4">Upgrade to continue generating RFQs</p>
+                    <Button onClick={handleUpgradeClick} className="bg-blue-600 hover:bg-blue-700 text-white">
+                      View Pricing Plans
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <FileUpload onFileProcessed={handleFileProcessed} />
+              )}
             </CardContent>
           </Card>
 
@@ -196,8 +245,12 @@ const Dashboard = () => {
                   <div className="flex items-center justify-center h-64 border-2 border-dashed border-gray-200 rounded-xl bg-gray-50">
                     <div className="text-center text-gray-500">
                       <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                      <p className="text-lg font-medium">Upload a document to get started</p>
-                      <p className="text-sm">AI-generated RFQ will appear here</p>
+                      <p className="text-lg font-medium">
+                        {demoLimitReached ? 'Upgrade to generate RFQs' : 'Upload a document to get started'}
+                      </p>
+                      <p className="text-sm">
+                        {demoLimitReached ? 'Demo limit has been reached' : 'AI-generated RFQ will appear here'}
+                      </p>
                     </div>
                   </div>
                 </CardContent>
@@ -229,7 +282,7 @@ const Dashboard = () => {
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">RFQ Remaining</span>
-                  <span className="font-semibold">
+                  <span className={`font-semibold ${demoLimitReached ? 'text-red-600' : ''}`}>
                     {getRemainingText(rfqCount, rfqLimit)}
                   </span>
                 </div>
@@ -248,7 +301,7 @@ const Dashboard = () => {
             <Card className="shadow-sm border-blue-200">
               <CardHeader className="bg-blue-50">
                 <CardTitle className="text-lg text-blue-900">
-                  Unlock Full Features
+                  {demoLimitReached ? 'Demo Limit Reached' : 'Unlock Full Features'}
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-6">
@@ -270,7 +323,7 @@ const Dashboard = () => {
                   className="w-full bg-blue-600 hover:bg-blue-700"
                   onClick={handleUpgradeClick}
                 >
-                  View Pricing Plans
+                  {demoLimitReached ? 'Upgrade Now' : 'View Pricing Plans'}
                 </Button>
               </CardContent>
             </Card>
@@ -284,10 +337,14 @@ const Dashboard = () => {
             <CardContent>
               <div className="space-y-3 text-sm">
                 <div className="flex items-center gap-3">
-                  <div className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-bold">
+                  <div className={`w-6 h-6 text-white rounded-full flex items-center justify-center text-xs font-bold ${
+                    demoLimitReached ? 'bg-gray-400' : 'bg-blue-600'
+                  }`}>
                     1
                   </div>
-                  <span>Upload your solicitation document</span>
+                  <span className={demoLimitReached ? 'text-gray-500' : ''}>
+                    Upload your solicitation document
+                  </span>
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="w-6 h-6 bg-gray-300 text-gray-600 rounded-full flex items-center justify-center text-xs font-bold">
