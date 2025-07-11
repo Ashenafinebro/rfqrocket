@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -69,7 +68,7 @@ const Signup = () => {
 
     console.log('Attempting signup for email:', formData.email);
 
-    const { data, error } = await signUp(formData.email, formData.password, {
+    const { error } = await signUp(formData.email, formData.password, {
       business_name: formData.businessName,
       promo_code: formData.promoCode
     });
@@ -85,14 +84,7 @@ const Signup = () => {
       } else {
         toast.error(error.message || 'Failed to create account');
       }
-    } else if (data?.user && !data.session) {
-      // User was created but no session (likely means user already exists)
-      toast.error('Account already exists. Please sign in instead.');
-    } else if (data?.user && data.session) {
-      // Successful signup with new user
-      toast.success('Account created! Please check your email to verify your account.');
     } else {
-      // Fallback for other cases
       toast.success('Account created! Please check your email to verify your account.');
     }
     
