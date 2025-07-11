@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -16,10 +16,11 @@ interface ProcessedData {
 }
 
 const Dashboard = () => {
-  const { user, subscription, incrementRFQCount } = useAuth();
+  const { user, subscription, incrementRFQCount, loading } = useAuth();
   const navigate = useNavigate();
   const [demoUsed, setDemoUsed] = useState(false);
   const [processedData, setProcessedData] = useState<ProcessedData | null>(null);
+  const [subscriptionLoaded, setSubscriptionLoaded] = useState(false);
 
   const isDemo = !subscription.subscribed;
   const rfqCount = subscription.rfq_count || 0;
@@ -29,6 +30,19 @@ const Dashboard = () => {
 
   // Check if demo user has reached RFQ limit
   const demoLimitReached = isDemo && rfqCount >= (rfqLimit || 1);
+
+  // Wait for subscription data to load before showing the interface
+  useEffect(() => {
+    if (!loading && user) {
+      // Small delay to ensure subscription check is complete
+      const timer = setTimeout(() => {
+        setSubscriptionLoaded(true);
+      }, 100);
+      return () => clearTimeout(timer);
+    } else if (!loading && !user) {
+      setSubscriptionLoaded(true);
+    }
+  }, [loading, user, subscription]);
 
   const handleFileProcessed = async (data: ProcessedData) => {
     setProcessedData(data);
@@ -58,6 +72,22 @@ const Dashboard = () => {
     if (limit === null) return 'Unlimited';
     return `${Math.max(0, limit - count)} remaining`;
   };
+
+  // Show loading state while subscription data is being fetched
+  if (!subscriptionLoaded) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-8 px-4">
+        <div className="max-w-6xl mx-auto">
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading dashboard...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
