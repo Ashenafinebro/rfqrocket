@@ -64,17 +64,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     proposal_limit: 1
   });
 
-  const updateSessionRfqCount = (count: number) => {
-    console.log('Updating session RFQ count from', sessionRfqCount, 'to', count);
-    setSessionRfqCount(count);
-    sessionStorage.setItem('rfq_count_session', count.toString());
-  };
-
-  const getSessionRfqCount = () => {
-    const stored = sessionStorage.getItem('rfq_count_session');
-    return stored ? parseInt(stored, 10) : 0;
-  };
-
   const signIn = async (email: string, password: string) => {
     try {
       const { error } = await supabase.auth.signInWithPassword({
@@ -142,8 +131,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const databaseRfqCount = data.rfq_count || 0;
       console.log('Database RFQ count:', databaseRfqCount);
       
-      // ALWAYS update session count with database value on subscription check
-      updateSessionRfqCount(databaseRfqCount);
+      // Update session count with database value
+      console.log('Updating session RFQ count from', sessionRfqCount, 'to', databaseRfqCount);
+      setSessionRfqCount(databaseRfqCount);
       
       // Set usage limits based on plan
       let rfqLimit = 1; // Free/demo default
@@ -200,7 +190,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Update session count immediately after successful database increment
       const newCount = sessionRfqCount + 1;
       console.log('Updating session count after successful increment:', newCount);
-      updateSessionRfqCount(newCount);
+      setSessionRfqCount(newCount);
       
       // Update subscription state to reflect new count
       setSubscription(prev => ({
@@ -235,7 +225,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await supabase.auth.signOut();
       setUser(null);
       setAppliedPromo(null);
-      // Keep session RFQ count on sign out to prevent demo bypass
+      setSessionRfqCount(0);
       setSubscription({
         subscribed: false,
         plan: null,
@@ -254,11 +244,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
-    // Load session RFQ count on app start
-    const storedCount = getSessionRfqCount();
-    console.log('Loading stored session count on startup:', storedCount);
-    setSessionRfqCount(storedCount);
-    
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
@@ -301,7 +286,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         if (event === 'SIGNED_OUT') {
           setAppliedPromo(null);
-          // Keep session RFQ count to prevent demo bypass
+          setSessionRfqCount(0);
           setSubscription({
             subscribed: false,
             plan: null,
