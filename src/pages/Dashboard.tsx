@@ -1,5 +1,3 @@
-
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,9 +15,8 @@ interface ProcessedData {
 }
 
 const Dashboard = () => {
-  const { user, subscription, incrementRFQCount, loading, subscriptionLoading, sessionRfqCount } = useAuth();
+  const { user, subscription, loading, subscriptionLoading, sessionRfqCount } = useAuth();
   const navigate = useNavigate();
-  const [demoUsed, setDemoUsed] = useState(false);
   const [processedData, setProcessedData] = useState<ProcessedData | null>(null);
 
   const isDemo = !subscription.subscribed;
@@ -36,10 +33,7 @@ const Dashboard = () => {
 
   const handleFileProcessed = async (data: ProcessedData) => {
     setProcessedData(data);
-    setDemoUsed(true);
-    
-    // Increment RFQ count when successfully processed
-    await incrementRFQCount();
+    // Note: RFQ count increment is now handled by the RFQGenerator component
   };
 
   const handleStartHere = () => {

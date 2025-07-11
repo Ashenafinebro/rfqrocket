@@ -37,7 +37,7 @@ const RFQGenerator: React.FC<RFQGeneratorProps> = ({ onRFQGenerated, data }) => 
   });
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedRFQ, setGeneratedRFQ] = useState<string | null>(data?.rfqContent || null);
-  const [hasUsedDataRFQ, setHasUsedDataRFQ] = useState(false);
+  const [hasProcessedData, setHasProcessedData] = useState(false);
 
   const hasSubscription = subscription.subscribed;
   const rfqCount = subscription.rfq_count || 0;
@@ -45,30 +45,29 @@ const RFQGenerator: React.FC<RFQGeneratorProps> = ({ onRFQGenerated, data }) => 
   
   const canGenerate = rfqLimit === null || rfqCount < rfqLimit;
 
-  // If data is provided (from file processing), show it immediately and track usage
+  // Process data only once when component mounts with data
   React.useEffect(() => {
-    if (data?.rfqContent && !hasUsedDataRFQ) {
+    if (data?.rfqContent && !hasProcessedData) {
       setGeneratedRFQ(data.rfqContent);
+      setHasProcessedData(true);
       
-      // Track usage for the uploaded document RFQ generation
-      const trackDataRFQUsage = async () => {
-        if (!canGenerate) {
-          toast.error('Usage limit reached. Please upgrade to continue generating RFQs.');
-          return;
-        }
+      // Only increment count if user can still generate
+      if (canGenerate) {
+        const trackDataRFQUsage = async () => {
+          try {
+            await incrementRFQCount();
+            console.log('RFQ usage tracked for uploaded document');
+          } catch (error) {
+            console.error('Error tracking RFQ usage:', error);
+          }
+        };
         
-        try {
-          await incrementRFQCount();
-          setHasUsedDataRFQ(true);
-          console.log('RFQ usage tracked for uploaded document');
-        } catch (error) {
-          console.error('Error tracking RFQ usage:', error);
-        }
-      };
-      
-      trackDataRFQUsage();
+        trackDataRFQUsage();
+      } else {
+        toast.error('Usage limit reached. Please upgrade to continue generating RFQs.');
+      }
     }
-  }, [data, hasUsedDataRFQ, canGenerate, incrementRFQCount]);
+  }, [data?.rfqContent, hasProcessedData, canGenerate, incrementRFQCount]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
