@@ -28,8 +28,8 @@ const Dashboard = () => {
   const rfqLimit = subscription.rfq_limit;
   const proposalLimit = subscription.proposal_limit;
 
-  // Check if demo user has reached RFQ limit
-  const demoLimitReached = isDemo && rfqCount >= (rfqLimit || 1);
+  // Check if demo user has reached RFQ limit - fix the logic here
+  const demoLimitReached = isDemo && rfqLimit !== null && rfqCount >= rfqLimit;
 
   // Wait for subscription data to load before showing the interface
   useEffect(() => {
