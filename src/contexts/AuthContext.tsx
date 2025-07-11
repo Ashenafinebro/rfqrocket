@@ -78,7 +78,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signUp = async (email: string, password: string, metadata?: any) => {
     try {
-      const redirectUrl = `${window.location.origin}/`;
+      const redirectUrl = `https://rfqrocket.com/`;
       
       const { error } = await supabase.auth.signUp({
         email,
@@ -96,7 +96,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signInWithGoogle = async () => {
     try {
-      const redirectUrl = `${window.location.origin}/`;
+      const redirectUrl = `https://rfqrocket.com/`;
       
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -112,8 +112,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const resetPassword = async (email: string) => {
     try {
-      // Use the current origin to build the redirect URL
-      const redirectUrl = `${window.location.origin}/reset-password`;
+      // Use the production URL for password reset redirect
+      const redirectUrl = `https://rfqrocket.com/reset-password`;
       
       console.log('Sending password reset email with redirect URL:', redirectUrl);
       
