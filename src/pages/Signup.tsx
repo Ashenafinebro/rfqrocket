@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -52,6 +51,27 @@ const Signup = () => {
     }
   };
 
+  const checkIfUserExists = async (email: string) => {
+    try {
+      // Check if user exists in profiles table
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('email', email)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error checking user existence:', error);
+        return false;
+      }
+
+      return !!data;
+    } catch (error) {
+      console.error('Error checking user existence:', error);
+      return false;
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.agreeToTerms) {
@@ -67,13 +87,21 @@ const Signup = () => {
 
     setIsLoading(true);
 
+    // Check if user already exists
+    const userExists = await checkIfUserExists(formData.email);
+    if (userExists) {
+      toast.error('Account already exists. Please sign in instead.');
+      setIsLoading(false);
+      return;
+    }
+
     const { error } = await signUp(formData.email, formData.password, {
       business_name: formData.businessName,
       promo_code: formData.promoCode
     });
     
     if (error) {
-      // Check if the error is about user already registered
+      // Check if the error is about user already registered (fallback check)
       if (error.message?.includes('User already registered') || 
           error.message?.includes('already been registered') ||
           error.message?.includes('email address is already in use')) {
