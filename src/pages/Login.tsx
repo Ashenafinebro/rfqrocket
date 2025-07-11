@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -144,14 +143,12 @@ const Login = () => {
               </div>
 
               <div className="flex items-center justify-between">
-                <button
-                  type="button"
-                  onClick={() => setShowForgotPassword(true)}
+                <Link
+                  to="/forgot-password"
                   className="text-sm text-blue-600 hover:text-blue-800 font-medium"
-                  disabled={isLoading}
                 >
                   Forgot your password?
-                </button>
+                </Link>
               </div>
 
               <Button 
