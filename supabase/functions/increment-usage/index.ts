@@ -25,7 +25,7 @@ serve(async (req) => {
       throw new Error("No authorization header");
     }
 
-    // Create client with anon key for auth
+    // Create client for auth verification
     const supabaseAuth = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_ANON_KEY") ?? ""
@@ -35,8 +35,11 @@ serve(async (req) => {
     const { data: { user }, error: userError } = await supabaseAuth.auth.getUser(token);
     
     if (userError || !user) {
+      console.error("User authentication failed:", userError);
       throw new Error("User not authenticated");
     }
+
+    console.log("Authenticated user:", user.id);
 
     // Create service role client for database operations
     const supabaseService = createClient(
@@ -45,8 +48,10 @@ serve(async (req) => {
       { auth: { persistSession: false } }
     );
 
-    // Increment the appropriate counter
+    // Increment the appropriate counter using the database function
     const columnToIncrement = type === 'rfq' ? 'rfq_count' : 'proposal_count';
+    
+    console.log(`Incrementing ${columnToIncrement} for user ${user.id}`);
     
     const { error: updateError } = await supabaseService.rpc('increment_usage_count', {
       user_id: user.id,
@@ -54,11 +59,14 @@ serve(async (req) => {
     });
 
     if (updateError) {
+      console.error("Database update error:", updateError);
       throw updateError;
     }
 
+    console.log(`Successfully incremented ${columnToIncrement}`);
+
     return new Response(
-      JSON.stringify({ success: true }),
+      JSON.stringify({ success: true, message: `${type} count incremented` }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
