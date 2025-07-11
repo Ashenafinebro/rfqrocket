@@ -26,12 +26,25 @@ interface SubscriptionInfo {
   proposal_limit: number | null;
 }
 
+interface AppliedPromo {
+  code: string;
+  type: 'percentage' | 'fixed';
+  value: number;
+  influencer: string;
+}
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   profile: Profile | null;
   subscription: SubscriptionInfo;
   loading: boolean;
+  appliedPromo: AppliedPromo | null;
+  signIn: (email: string, password: string) => Promise<{ error: any }>;
+  signUp: (email: string, password: string, metadata?: any) => Promise<{ error: any }>;
+  signOut: () => Promise<void>;
+  signInWithGoogle: () => Promise<{ error: any }>;
+  setAppliedPromo: (promo: AppliedPromo | null) => void;
   incrementRFQCount: () => Promise<void>;
   incrementProposalCount: () => Promise<void>;
   checkSubscription: () => Promise<void>;
@@ -52,6 +65,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [appliedPromo, setAppliedPromo] = useState<AppliedPromo | null>(null);
 
   const getSubscriptionInfo = (profile: Profile | null): SubscriptionInfo => {
     if (!profile) {
@@ -112,6 +126,58 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error) {
       console.error('Error fetching profile:', error);
       return null;
+    }
+  };
+
+  const signIn = async (email: string, password: string) => {
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+      return { error };
+    } catch (error) {
+      return { error };
+    }
+  };
+
+  const signUp = async (email: string, password: string, metadata?: any) => {
+    try {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/`,
+          data: metadata
+        }
+      });
+      return { error };
+    } catch (error) {
+      return { error };
+    }
+  };
+
+  const signOut = async () => {
+    try {
+      await supabase.auth.signOut();
+      setProfile(null);
+      setAppliedPromo(null);
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
+
+  const signInWithGoogle = async () => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/`
+        }
+      });
+      return { error };
+    } catch (error) {
+      return { error };
     }
   };
 
@@ -207,6 +273,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       profile, 
       subscription, 
       loading, 
+      appliedPromo,
+      signIn,
+      signUp,
+      signOut,
+      signInWithGoogle,
+      setAppliedPromo,
       incrementRFQCount, 
       incrementProposalCount, 
       checkSubscription 
