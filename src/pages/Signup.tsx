@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -51,26 +52,6 @@ const Signup = () => {
     }
   };
 
-  const checkIfUserExists = async (email: string) => {
-    try {
-      // Check if user exists in profiles table
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('email')
-        .eq('email', email);
-
-      if (error) {
-        console.error('Error checking user existence:', error);
-        return false;
-      }
-
-      return data && data.length > 0;
-    } catch (error) {
-      console.error('Error checking user existence:', error);
-      return false;
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.agreeToTerms) {
@@ -86,13 +67,7 @@ const Signup = () => {
 
     setIsLoading(true);
 
-    // Check if user already exists
-    const userExists = await checkIfUserExists(formData.email);
-    if (userExists) {
-      toast.error('Account already exists. Please sign in instead.');
-      setIsLoading(false);
-      return;
-    }
+    console.log('Attempting signup for email:', formData.email);
 
     const { error } = await signUp(formData.email, formData.password, {
       business_name: formData.businessName,
@@ -100,10 +75,12 @@ const Signup = () => {
     });
     
     if (error) {
-      // Check if the error is about user already registered (fallback check)
+      console.error('Signup error:', error);
+      // Check if the error is about user already registered
       if (error.message?.includes('User already registered') || 
           error.message?.includes('already been registered') ||
-          error.message?.includes('email address is already in use')) {
+          error.message?.includes('email address is already in use') ||
+          error.message?.includes('already registered')) {
         toast.error('Account already exists. Please sign in instead.');
       } else {
         toast.error(error.message || 'Failed to create account');
