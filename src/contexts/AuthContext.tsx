@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -64,9 +65,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
 
   const updateSessionRfqCount = (count: number) => {
+    console.log('Updating session RFQ count from', sessionRfqCount, 'to', count);
     setSessionRfqCount(count);
     sessionStorage.setItem('rfq_count_session', count.toString());
-    console.log('Updated session RFQ count to:', count);
   };
 
   const getSessionRfqCount = () => {
@@ -121,7 +122,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const checkSubscription = async () => {
-    if (!user) return;
+    if (!user) {
+      console.log('No user found, skipping subscription check');
+      return;
+    }
     
     setSubscriptionLoading(true);
     try {
@@ -136,8 +140,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log('Subscription check response:', data);
       
       const databaseRfqCount = data.rfq_count || 0;
+      console.log('Database RFQ count:', databaseRfqCount);
       
-      // Update session count with database value on sign-in
+      // ALWAYS update session count with database value on subscription check
       updateSessionRfqCount(databaseRfqCount);
       
       // Set usage limits based on plan
@@ -194,6 +199,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       // Update session count immediately after successful database increment
       const newCount = sessionRfqCount + 1;
+      console.log('Updating session count after successful increment:', newCount);
       updateSessionRfqCount(newCount);
       
       // Update subscription state to reflect new count
@@ -250,6 +256,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     // Load session RFQ count on app start
     const storedCount = getSessionRfqCount();
+    console.log('Loading stored session count on startup:', storedCount);
     setSessionRfqCount(storedCount);
     
     // Get initial session
@@ -259,7 +266,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (session?.user) {
         console.log('Initial session found, checking subscription');
-        checkSubscription();
+        // Use setTimeout to ensure checkSubscription runs after state updates
+        setTimeout(() => {
+          checkSubscription();
+        }, 100);
       }
     });
 
@@ -271,8 +281,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setLoading(false);
         
         if (session?.user && event === 'SIGNED_IN') {
-          console.log('User signed in, checking subscription and updating session count');
-          // Reset subscription to default state and start loading fresh data
+          console.log('User signed in, checking subscription and syncing session count');
+          // Reset subscription to default state
           setSubscription({
             subscribed: false,
             plan: null,
@@ -282,9 +292,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             rfq_limit: 1,
             proposal_limit: 1
           });
-          // Use setTimeout to ensure the subscription check happens after state update
+          
+          // Use setTimeout to ensure the subscription check happens after state updates
           setTimeout(() => {
-            checkSubscription(); // This will update session count with database value
+            checkSubscription(); // This will sync session count with database
           }, 100);
         }
         
