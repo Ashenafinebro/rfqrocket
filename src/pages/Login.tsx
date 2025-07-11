@@ -8,6 +8,7 @@ import { Rocket, Mail, Lock } from 'lucide-react';
 import { Link, Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import ForgotPassword from '@/components/ForgotPassword';
 
 const Login = () => {
   const { signIn, signInWithGoogle, user, loading } = useAuth();
@@ -16,6 +17,7 @@ const Login = () => {
     password: ''
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
 
   // Redirect if already logged in
   if (!loading && user) {
@@ -56,6 +58,24 @@ const Login = () => {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  if (showForgotPassword) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4">
+        <div className="max-w-md w-full space-y-8">
+          <div className="text-center">
+            <div className="flex items-center justify-center mb-6">
+              <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center mr-3">
+                <Rocket className="h-7 w-7 text-white" />
+              </div>
+              <span className="text-2xl font-bold text-gray-900">RFQRocket</span>
+            </div>
+          </div>
+          <ForgotPassword onBack={() => setShowForgotPassword(false)} />
+        </div>
       </div>
     );
   }
@@ -121,6 +141,17 @@ const Login = () => {
                     disabled={isLoading}
                   />
                 </div>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => setShowForgotPassword(true)}
+                  className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                  disabled={isLoading}
+                >
+                  Forgot your password?
+                </button>
               </div>
 
               <Button 

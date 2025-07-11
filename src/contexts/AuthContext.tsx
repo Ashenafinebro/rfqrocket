@@ -31,6 +31,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signUp: (email: string, password: string, metadata?: any) => Promise<{ error: any }>;
   signInWithGoogle: () => Promise<{ error: any }>;
+  resetPassword: (email: string) => Promise<{ error: any }>;
   incrementRFQCount: () => Promise<void>;
   incrementProposalCount: () => Promise<void>;
   subscriptionLoading: boolean;
@@ -102,6 +103,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         options: {
           redirectTo: redirectUrl
         }
+      });
+      return { error };
+    } catch (error) {
+      return { error };
+    }
+  };
+
+  const resetPassword = async (email: string) => {
+    try {
+      const redirectUrl = `${window.location.origin}/reset-password`;
+      
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: redirectUrl,
       });
       return { error };
     } catch (error) {
@@ -325,6 +339,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       signIn,
       signUp,
       signInWithGoogle,
+      resetPassword,
       incrementRFQCount,
       incrementProposalCount,
       sessionRfqCount
