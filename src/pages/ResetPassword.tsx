@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Lock, Rocket, AlertCircle } from 'lucide-react';
+import { Lock, Rocket, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -19,11 +19,12 @@ const ResetPassword = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [tokenError, setTokenError] = useState(false);
   const [checkingToken, setCheckingToken] = useState(true);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   useEffect(() => {
     const checkResetToken = async () => {
       try {
-        // Check if we have the required parameters from the URL
         const accessToken = searchParams.get('access_token');
         const refreshToken = searchParams.get('refresh_token');
         const type = searchParams.get('type');
@@ -37,7 +38,6 @@ const ResetPassword = () => {
           return;
         }
 
-        // Try to set the session with the tokens
         const { data, error } = await supabase.auth.setSession({
           access_token: accessToken,
           refresh_token: refreshToken
@@ -66,6 +66,22 @@ const ResetPassword = () => {
     checkResetToken();
   }, [searchParams]);
 
+  const validatePassword = (password: string) => {
+    if (password.length < 8) {
+      return 'Password must be at least 8 characters long';
+    }
+    if (!/(?=.*[a-z])/.test(password)) {
+      return 'Password must contain at least one lowercase letter';
+    }
+    if (!/(?=.*[A-Z])/.test(password)) {
+      return 'Password must contain at least one uppercase letter';
+    }
+    if (!/(?=.*\d)/.test(password)) {
+      return 'Password must contain at least one number';
+    }
+    return null;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -74,8 +90,9 @@ const ResetPassword = () => {
       return;
     }
 
-    if (formData.password.length < 6) {
-      toast.error('Password must be at least 6 characters long');
+    const passwordError = validatePassword(formData.password);
+    if (passwordError) {
+      toast.error(passwordError);
       return;
     }
 
@@ -91,7 +108,6 @@ const ResetPassword = () => {
         toast.error(error.message || 'Failed to update password');
       } else {
         toast.success('Password updated successfully!');
-        // Sign out after password reset to ensure clean state
         await supabase.auth.signOut();
         navigate('/login');
       }
@@ -200,17 +216,29 @@ const ResetPassword = () => {
                     <Lock className="h-4 w-4" />
                     New Password
                   </Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    value={formData.password}
-                    onChange={(e) => handleInputChange('password', e.target.value)}
-                    placeholder="Enter your new password"
-                    className="mt-1"
-                    required
-                    disabled={isLoading}
-                    minLength={6}
-                  />
+                  <div className="relative mt-1">
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      value={formData.password}
+                      onChange={(e) => handleInputChange('password', e.target.value)}
+                      placeholder="Enter your new password"
+                      required
+                      disabled={isLoading}
+                      minLength={8}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
+                      disabled={isLoading}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Must be at least 8 characters with uppercase, lowercase, and numbers
+                  </p>
                 </div>
 
                 <div>
@@ -218,17 +246,26 @@ const ResetPassword = () => {
                     <Lock className="h-4 w-4" />
                     Confirm New Password
                   </Label>
-                  <Input
-                    id="confirmPassword"
-                    type="password"
-                    value={formData.confirmPassword}
-                    onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
-                    placeholder="Confirm your new password"
-                    className="mt-1"
-                    required
-                    disabled={isLoading}
-                    minLength={6}
-                  />
+                  <div className="relative mt-1">
+                    <Input
+                      id="confirmPassword"
+                      type={showConfirmPassword ? "text" : "password"}
+                      value={formData.confirmPassword}
+                      onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
+                      placeholder="Confirm your new password"
+                      required
+                      disabled={isLoading}
+                      minLength={8}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
+                      disabled={isLoading}
+                    >
+                      {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -237,7 +274,7 @@ const ResetPassword = () => {
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3"
                 disabled={isLoading}
               >
-                {isLoading ? 'Updating Password...' : 'Update Password'}
+                {isLoading ? 'Resetting Password...' : 'Reset Password'}
               </Button>
             </form>
 
