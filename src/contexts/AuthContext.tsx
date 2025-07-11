@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -34,6 +35,7 @@ interface AuthContextType {
   incrementRFQCount: () => Promise<void>;
   incrementProposalCount: () => Promise<void>;
   subscriptionLoading: boolean;
+  sessionRfqCount: number;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -51,6 +53,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const [subscriptionLoading, setSubscriptionLoading] = useState(false);
   const [appliedPromo, setAppliedPromo] = useState<PromoCode | null>(null);
+  const [sessionRfqCount, setSessionRfqCount] = useState(0);
   const [subscription, setSubscription] = useState<SubscriptionInfo>({
     subscribed: false,
     plan: null,
@@ -60,6 +63,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     rfq_limit: 1,
     proposal_limit: 1
   });
+
+  const storeRfqCountInSession = (count: number) => {
+    setSessionRfqCount(count);
+    sessionStorage.setItem('rfq_count_session', count.toString());
+  };
+
+  const getSessionRfqCount = () => {
+    const stored = sessionStorage.getItem('rfq_count_session');
+    return stored ? parseInt(stored, 10) : 0;
+  };
 
   const signIn = async (email: string, password: string) => {
     try {
@@ -122,6 +135,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       console.log('Subscription check response:', data);
       
+      // Store RFQ count in session on fresh load
+      if (data.rfq_count !== undefined) {
+        storeRfqCountInSession(data.rfq_count);
+      }
+      
       // Set usage limits based on plan
       let rfqLimit = 1; // Free/demo default
       let proposalLimit = 1; // Free/demo default
@@ -166,6 +184,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await supabase.functions.invoke('increment-usage', {
         body: { type: 'rfq' }
       });
+      
+      // Update session count immediately
+      const newCount = sessionRfqCount + 1;
+      storeRfqCountInSession(newCount);
+      
       await checkSubscription(); // Refresh subscription data
       console.log('RFQ count incremented successfully');
     } catch (error) {
@@ -193,6 +216,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await supabase.auth.signOut();
       setUser(null);
       setAppliedPromo(null);
+      setSessionRfqCount(0);
+      sessionStorage.removeItem('rfq_count_session');
       setSubscription({
         subscribed: false,
         plan: null,
@@ -218,6 +243,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (session?.user) {
         console.log('Initial session found, checking subscription');
+        // Load session RFQ count if available
+        const storedCount = getSessionRfqCount();
+        setSessionRfqCount(storedCount);
         checkSubscription();
       }
     });
@@ -241,6 +269,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             rfq_limit: 1,
             proposal_limit: 1
           });
+          // Clear previous session data
+          setSessionRfqCount(0);
+          sessionStorage.removeItem('rfq_count_session');
           // Use setTimeout to ensure the subscription check happens after state update
           setTimeout(() => {
             checkSubscription();
@@ -249,6 +280,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         if (event === 'SIGNED_OUT') {
           setAppliedPromo(null);
+          setSessionRfqCount(0);
+          sessionStorage.removeItem('rfq_count_session');
           setSubscription({
             subscribed: false,
             plan: null,
@@ -280,7 +313,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       signUp,
       signInWithGoogle,
       incrementRFQCount,
-      incrementProposalCount
+      incrementProposalCount,
+      sessionRfqCount
     }}>
       {children}
     </AuthContext.Provider>

@@ -1,4 +1,5 @@
 
+
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,7 +17,7 @@ interface ProcessedData {
 }
 
 const Dashboard = () => {
-  const { user, subscription, incrementRFQCount, loading, subscriptionLoading } = useAuth();
+  const { user, subscription, incrementRFQCount, loading, subscriptionLoading, sessionRfqCount } = useAuth();
   const navigate = useNavigate();
   const [demoUsed, setDemoUsed] = useState(false);
   const [processedData, setProcessedData] = useState<ProcessedData | null>(null);
@@ -27,8 +28,11 @@ const Dashboard = () => {
   const rfqLimit = subscription.rfq_limit;
   const proposalLimit = subscription.proposal_limit;
 
-  // Check if demo user has reached RFQ limit - ensure proper validation
-  const demoLimitReached = isDemo && rfqLimit !== null && rfqCount >= rfqLimit;
+  // Use session RFQ count for demo limit check to persist across sign-out/sign-in
+  const effectiveRfqCount = Math.max(sessionRfqCount, rfqCount);
+  const demoLimitReached = isDemo && rfqLimit !== null && effectiveRfqCount >= rfqLimit;
+
+  console.log('Dashboard render - sessionRfqCount:', sessionRfqCount, 'rfqCount:', rfqCount, 'effectiveRfqCount:', effectiveRfqCount, 'demoLimitReached:', demoLimitReached);
 
   const handleFileProcessed = async (data: ProcessedData) => {
     setProcessedData(data);
@@ -101,7 +105,7 @@ const Dashboard = () => {
                   }`}>
                     {demoLimitReached 
                       ? 'You have used your free RFQ generation. Upgrade to continue creating RFQs.'
-                      : `You have ${getRemainingText(rfqCount, rfqLimit)} RFQ generations in demo mode. Downloads are disabled in demo mode.`
+                      : `You have ${getRemainingText(effectiveRfqCount, rfqLimit)} RFQ generations in demo mode. Downloads are disabled in demo mode.`
                     }
                   </p>
                 </div>
@@ -286,7 +290,7 @@ const Dashboard = () => {
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">RFQs Generated</span>
-                  <span className="font-semibold">{rfqCount}</span>
+                  <span className="font-semibold">{effectiveRfqCount}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">Proposals Generated</span>
@@ -299,7 +303,7 @@ const Dashboard = () => {
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">RFQ Remaining</span>
                   <span className={`font-semibold ${demoLimitReached ? 'text-red-600' : ''}`}>
-                    {getRemainingText(rfqCount, rfqLimit)}
+                    {getRemainingText(effectiveRfqCount, rfqLimit)}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
