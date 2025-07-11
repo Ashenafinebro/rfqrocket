@@ -73,7 +73,14 @@ const Signup = () => {
     });
     
     if (error) {
-      toast.error(error.message || 'Failed to create account');
+      // Check if the error is about user already registered
+      if (error.message?.includes('User already registered') || 
+          error.message?.includes('already been registered') ||
+          error.message?.includes('email address is already in use')) {
+        toast.error('Account already exists. Please sign in instead.');
+      } else {
+        toast.error(error.message || 'Failed to create account');
+      }
     } else {
       toast.success('Account created! Please check your email to verify your account.');
     }
