@@ -53,20 +53,13 @@ const Signup = () => {
 
   const checkEmailExists = async (email: string) => {
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('email')
-        .eq('email', email)
-        .maybeSingle();
-
-      if (error) {
-        console.error('Error checking email:', error);
-        return false;
-      }
-
-      return !!data;
+      // We can't check profiles table directly due to RLS policies when not authenticated
+      // Instead, we'll attempt a signup and let Supabase handle the duplicate detection
+      // The auth system will return an appropriate error if the user already exists
+      console.log('Email checking will be handled by Supabase auth during signup attempt');
+      return false; // Always proceed to signup attempt
     } catch (error) {
-      console.error('Error checking email exists:', error);
+      console.error('Error in email check function:', error);
       return false;
     }
   };
@@ -88,13 +81,8 @@ const Signup = () => {
 
     console.log('Attempting signup for email:', formData.email);
 
-    // Check if email already exists in profiles table
-    const emailExists = await checkEmailExists(formData.email);
-    if (emailExists) {
-      toast.error('An account with this email already exists. Please sign in instead.');
-      setIsLoading(false);
-      return;
-    }
+    // Let Supabase handle duplicate email detection
+    console.log('Proceeding with signup attempt - Supabase will handle duplicate detection');
 
     const { error } = await signUp(formData.email, formData.password, {
       business_name: formData.businessName,
@@ -103,14 +91,21 @@ const Signup = () => {
     
     if (error) {
       console.error('Signup error:', error);
-      // Check if the error is about user already registered
+      
+      // Handle specific error cases
       if (error.message?.includes('User already registered') || 
           error.message?.includes('already been registered') ||
           error.message?.includes('email address is already in use') ||
-          error.message?.includes('already registered')) {
-        toast.error('Account already exists. Please sign in instead.');
+          error.message?.includes('already registered') ||
+          error.message?.includes('signup_disabled_for_duplicate') ||
+          error.status === 422) {
+        toast.error('An account with this email already exists. Please sign in instead.');
+      } else if (error.message?.includes('Invalid email')) {
+        toast.error('Please enter a valid email address.');
+      } else if (error.message?.includes('Password')) {
+        toast.error('Password must be at least 6 characters long.');
       } else {
-        toast.error(error.message || 'Failed to create account');
+        toast.error(error.message || 'Failed to create account. Please try again.');
       }
     } else {
       toast.success('Account created! Please check your email to verify your account.');
