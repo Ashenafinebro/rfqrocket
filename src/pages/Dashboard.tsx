@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -28,21 +27,24 @@ const Dashboard = () => {
   const rfqLimit = subscription.rfq_limit;
   const proposalLimit = subscription.proposal_limit;
 
-  // Check if demo user has reached RFQ limit - fix the logic here
+  // Check if demo user has reached RFQ limit - ensure proper validation
   const demoLimitReached = isDemo && rfqLimit !== null && rfqCount >= rfqLimit;
 
   // Wait for subscription data to load before showing the interface
   useEffect(() => {
     if (!loading && user) {
-      // Small delay to ensure subscription check is complete
+      // Reset subscription loaded state when user changes
+      setSubscriptionLoaded(false);
+      
+      // Wait for subscription check to complete
       const timer = setTimeout(() => {
         setSubscriptionLoaded(true);
-      }, 100);
+      }, 500); // Increased delay to ensure subscription data is loaded
       return () => clearTimeout(timer);
     } else if (!loading && !user) {
       setSubscriptionLoaded(true);
     }
-  }, [loading, user, subscription]);
+  }, [loading, user, subscription.subscribed, subscription.rfq_count]); // Added dependencies to trigger when subscription changes
 
   const handleFileProcessed = async (data: ProcessedData) => {
     setProcessedData(data);
@@ -73,8 +75,8 @@ const Dashboard = () => {
     return `${Math.max(0, limit - count)} remaining`;
   };
 
-  // Show loading state while subscription data is being fetched
-  if (!subscriptionLoaded) {
+  // Show loading state while subscription data is being fetched or when user changes
+  if (!subscriptionLoaded || (user && (subscription.rfq_count === undefined || subscription.rfq_limit === undefined))) {
     return (
       <div className="min-h-screen bg-gray-50 py-8 px-4">
         <div className="max-w-6xl mx-auto">
