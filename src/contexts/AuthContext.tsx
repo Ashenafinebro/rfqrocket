@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -34,6 +33,7 @@ interface AuthContextType {
   signInWithGoogle: () => Promise<{ error: any }>;
   incrementRFQCount: () => Promise<void>;
   incrementProposalCount: () => Promise<void>;
+  subscriptionLoading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -49,6 +49,7 @@ export const useAuth = () => {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [subscriptionLoading, setSubscriptionLoading] = useState(false);
   const [appliedPromo, setAppliedPromo] = useState<PromoCode | null>(null);
   const [subscription, setSubscription] = useState<SubscriptionInfo>({
     subscribed: false,
@@ -109,6 +110,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const checkSubscription = async () => {
     if (!user) return;
     
+    setSubscriptionLoading(true);
     try {
       console.log('Checking subscription for user:', user.email);
       const { data, error } = await supabase.functions.invoke('check-subscription');
@@ -151,6 +153,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setSubscription(newSubscription);
     } catch (error) {
       console.error('Error checking subscription:', error);
+    } finally {
+      setSubscriptionLoading(false);
     }
   };
 
@@ -198,6 +202,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         rfq_limit: 1,
         proposal_limit: 1
       });
+      setSubscriptionLoading(false);
       toast.success('Signed out successfully');
     } catch (error) {
       console.error('Error signing out:', error);
@@ -226,6 +231,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         if (session?.user && event === 'SIGNED_IN') {
           console.log('User signed in, checking subscription immediately');
+          // Reset subscription to default state and start loading fresh data
+          setSubscription({
+            subscribed: false,
+            plan: null,
+            subscription_end: null,
+            rfq_count: 0,
+            proposal_count: 0,
+            rfq_limit: 1,
+            proposal_limit: 1
+          });
           // Use setTimeout to ensure the subscription check happens after state update
           setTimeout(() => {
             checkSubscription();
@@ -243,6 +258,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             rfq_limit: 1,
             proposal_limit: 1
           });
+          setSubscriptionLoading(false);
         }
       }
     );
@@ -257,6 +273,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       appliedPromo, 
       setAppliedPromo,
       subscription,
+      subscriptionLoading,
       checkSubscription,
       signOut,
       signIn,

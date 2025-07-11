@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,11 +16,10 @@ interface ProcessedData {
 }
 
 const Dashboard = () => {
-  const { user, subscription, incrementRFQCount, loading } = useAuth();
+  const { user, subscription, incrementRFQCount, loading, subscriptionLoading } = useAuth();
   const navigate = useNavigate();
   const [demoUsed, setDemoUsed] = useState(false);
   const [processedData, setProcessedData] = useState<ProcessedData | null>(null);
-  const [subscriptionLoaded, setSubscriptionLoaded] = useState(false);
 
   const isDemo = !subscription.subscribed;
   const rfqCount = subscription.rfq_count || 0;
@@ -29,30 +29,6 @@ const Dashboard = () => {
 
   // Check if demo user has reached RFQ limit - ensure proper validation
   const demoLimitReached = isDemo && rfqLimit !== null && rfqCount >= rfqLimit;
-
-  // Wait for subscription data to load before showing the interface
-  useEffect(() => {
-    if (!loading && user) {
-      // Reset subscription loaded state when user changes
-      setSubscriptionLoaded(false);
-      
-      // Wait for subscription check to complete - check if we have actual subscription data
-      const checkSubscriptionData = () => {
-        // Consider subscription loaded if we have both rfq_count and rfq_limit defined
-        if (subscription.rfq_count !== undefined && subscription.rfq_limit !== undefined) {
-          setSubscriptionLoaded(true);
-        } else {
-          // If data is not ready, check again after a short delay
-          setTimeout(checkSubscriptionData, 200);
-        }
-      };
-      
-      // Start checking subscription data
-      setTimeout(checkSubscriptionData, 300);
-    } else if (!loading && !user) {
-      setSubscriptionLoaded(true);
-    }
-  }, [loading, user, subscription.subscribed, subscription.rfq_count, subscription.rfq_limit]);
 
   const handleFileProcessed = async (data: ProcessedData) => {
     setProcessedData(data);
@@ -83,8 +59,8 @@ const Dashboard = () => {
     return `${Math.max(0, limit - count)} remaining`;
   };
 
-  // Show loading state while subscription data is being fetched or when user changes
-  if (!subscriptionLoaded || (user && (subscription.rfq_count === undefined || subscription.rfq_limit === undefined))) {
+  // Show loading state while auth is loading or subscription data is being fetched
+  if (loading || (user && subscriptionLoading)) {
     return (
       <div className="min-h-screen bg-gray-50 py-8 px-4">
         <div className="max-w-6xl mx-auto">
