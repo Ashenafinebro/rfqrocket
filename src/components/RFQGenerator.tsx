@@ -24,7 +24,7 @@ interface RFQGeneratorProps {
 }
 
 const RFQGenerator: React.FC<RFQGeneratorProps> = ({ onRFQGenerated, data }) => {
-  const { user, subscription, incrementRFQCount, checkSubscription, effectiveRfqCount } = useAuth();
+  const { user, subscription, incrementRFQCount, sessionRfqCount } = useAuth();
   const [formData, setFormData] = useState({
     projectTitle: '',
     projectDescription: '',
@@ -40,10 +40,10 @@ const RFQGenerator: React.FC<RFQGeneratorProps> = ({ onRFQGenerated, data }) => 
   const [hasProcessedData, setHasProcessedData] = useState(false);
 
   const hasSubscription = subscription.subscribed;
-  const rfqCount = subscription.rfq_count || 0;
   const rfqLimit = subscription.rfq_limit;
   
-  const canGenerate = rfqLimit === null || effectiveRfqCount < rfqLimit;
+  // Use sessionRfqCount for UI logic
+  const canGenerate = rfqLimit === null || sessionRfqCount < rfqLimit;
 
   // Process data only once when component mounts with data
   React.useEffect(() => {
@@ -115,11 +115,6 @@ const RFQGenerator: React.FC<RFQGeneratorProps> = ({ onRFQGenerated, data }) => 
     } catch (error) {
       console.error('Error generating RFQ:', error);
       toast.error('Failed to generate RFQ. Please try again.');
-      
-      // If generation failed, refresh subscription to get accurate count
-      setTimeout(async () => {
-        await checkSubscription();
-      }, 1000);
     } finally {
       setIsGenerating(false);
     }
@@ -146,7 +141,7 @@ const RFQGenerator: React.FC<RFQGeneratorProps> = ({ onRFQGenerated, data }) => 
 
   const getRemainingText = () => {
     if (rfqLimit === null) return 'Unlimited';
-    return `${Math.max(0, rfqLimit - effectiveRfqCount)} remaining`;
+    return `${Math.max(0, rfqLimit - sessionRfqCount)} remaining`;
   };
 
   return (
@@ -166,7 +161,7 @@ const RFQGenerator: React.FC<RFQGeneratorProps> = ({ onRFQGenerated, data }) => 
         <Alert>
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
-            Demo Mode: {effectiveRfqCount}/{rfqLimit || 1} RFQ generations used.
+            Demo Mode: {sessionRfqCount}/{rfqLimit || 1} RFQ generations used.
             {!canGenerate && (
               <span className="text-red-600 font-medium ml-2">
                 Upgrade to continue generating RFQs.

@@ -15,24 +15,22 @@ interface ProcessedData {
 }
 
 const Dashboard = () => {
-  const { user, subscription, loading, subscriptionLoading, effectiveRfqCount } = useAuth();
+  const { user, subscription, loading, subscriptionLoading, sessionRfqCount } = useAuth();
   const navigate = useNavigate();
   const [processedData, setProcessedData] = useState<ProcessedData | null>(null);
 
   const isDemo = !subscription.subscribed;
-  const rfqCount = subscription.rfq_count || 0;
   const proposalCount = subscription.proposal_count || 0;
   const rfqLimit = subscription.rfq_limit;
   const proposalLimit = subscription.proposal_limit;
 
-  // Use effectiveRfqCount for demo limit check
-  const demoLimitReached = isDemo && rfqLimit !== null && effectiveRfqCount >= rfqLimit;
+  // Use sessionRfqCount for UI logic
+  const demoLimitReached = isDemo && rfqLimit !== null && sessionRfqCount >= rfqLimit;
 
-  console.log('Dashboard render - effectiveRfqCount:', effectiveRfqCount, 'rfqCount:', rfqCount, 'demoLimitReached:', demoLimitReached);
+  console.log('Dashboard render - sessionRfqCount:', sessionRfqCount, 'demoLimitReached:', demoLimitReached);
 
   const handleFileProcessed = async (data: ProcessedData) => {
     setProcessedData(data);
-    // Note: RFQ count increment is now handled by the RFQGenerator component
   };
 
   const handleStartHere = () => {
@@ -98,7 +96,7 @@ const Dashboard = () => {
                   }`}>
                     {demoLimitReached 
                       ? 'You have used your free RFQ generation. Upgrade to continue creating RFQs.'
-                      : `You have ${getRemainingText(effectiveRfqCount, rfqLimit)} RFQ generations in demo mode. Downloads are disabled in demo mode.`
+                      : `You have ${getRemainingText(sessionRfqCount, rfqLimit)} RFQ generations in demo mode. Downloads are disabled in demo mode.`
                     }
                   </p>
                 </div>
@@ -123,7 +121,7 @@ const Dashboard = () => {
                 <div>
                   <h3 className="font-semibold text-green-800">{subscription.plan} Plan Active</h3>
                   <p className="text-green-700 text-sm mt-1">
-                    RFQs: {getRemainingText(rfqCount, rfqLimit)} | 
+                    RFQs: {getRemainingText(sessionRfqCount, rfqLimit)} | 
                     Proposals: {getRemainingText(proposalCount, proposalLimit)}
                   </p>
                 </div>
@@ -283,7 +281,7 @@ const Dashboard = () => {
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">RFQs Generated</span>
-                  <span className="font-semibold">{effectiveRfqCount}</span>
+                  <span className="font-semibold">{sessionRfqCount}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">Proposals Generated</span>
@@ -296,7 +294,7 @@ const Dashboard = () => {
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">RFQ Remaining</span>
                   <span className={`font-semibold ${demoLimitReached ? 'text-red-600' : ''}`}>
-                    {getRemainingText(effectiveRfqCount, rfqLimit)}
+                    {getRemainingText(sessionRfqCount, rfqLimit)}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
