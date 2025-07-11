@@ -53,13 +53,18 @@ const Signup = () => {
 
   const checkEmailExists = async (email: string) => {
     try {
-      // We can't check profiles table directly due to RLS policies when not authenticated
-      // Instead, we'll attempt a signup and let Supabase handle the duplicate detection
-      // The auth system will return an appropriate error if the user already exists
-      console.log('Email checking will be handled by Supabase auth during signup attempt');
-      return false; // Always proceed to signup attempt
+      const { data, error } = await supabase.rpc('check_email_exists', {
+        email_to_check: email
+      });
+
+      if (error) {
+        console.error('Error checking email:', error);
+        return false;
+      }
+
+      return data;
     } catch (error) {
-      console.error('Error in email check function:', error);
+      console.error('Error checking email exists:', error);
       return false;
     }
   };
@@ -81,8 +86,13 @@ const Signup = () => {
 
     console.log('Attempting signup for email:', formData.email);
 
-    // Let Supabase handle duplicate email detection
-    console.log('Proceeding with signup attempt - Supabase will handle duplicate detection');
+    // Check if email already exists in profiles table
+    const emailExists = await checkEmailExists(formData.email);
+    if (emailExists) {
+      toast.error('An account with this email already exists. Please sign in instead.');
+      setIsLoading(false);
+      return;
+    }
 
     const { error } = await signUp(formData.email, formData.password, {
       business_name: formData.businessName,
