@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Lock, Rocket } from 'lucide-react';
+import { Lock, Rocket, AlertCircle } from 'lucide-react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -17,25 +17,54 @@ const ResetPassword = () => {
     confirmPassword: ''
   });
   const [isLoading, setIsLoading] = useState(false);
-  const [isValidToken, setIsValidToken] = useState(false);
+  const [tokenError, setTokenError] = useState(false);
+  const [checkingToken, setCheckingToken] = useState(true);
 
   useEffect(() => {
-    // Check if we have the required tokens from the URL
-    const accessToken = searchParams.get('access_token');
-    const refreshToken = searchParams.get('refresh_token');
-    
-    if (accessToken && refreshToken) {
-      setIsValidToken(true);
-      // Set the session with the tokens from the URL
-      supabase.auth.setSession({
-        access_token: accessToken,
-        refresh_token: refreshToken
-      });
-    } else {
-      toast.error('Invalid or expired reset link');
-      navigate('/login');
-    }
-  }, [searchParams, navigate]);
+    const checkResetToken = async () => {
+      try {
+        // Check if we have the required parameters from the URL
+        const accessToken = searchParams.get('access_token');
+        const refreshToken = searchParams.get('refresh_token');
+        const type = searchParams.get('type');
+
+        console.log('Reset password URL params:', { accessToken: !!accessToken, refreshToken: !!refreshToken, type });
+
+        if (!accessToken || !refreshToken || type !== 'recovery') {
+          console.log('Missing required parameters or invalid type');
+          setTokenError(true);
+          setCheckingToken(false);
+          return;
+        }
+
+        // Try to set the session with the tokens
+        const { data, error } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken
+        });
+
+        if (error) {
+          console.error('Error setting session:', error);
+          setTokenError(true);
+          toast.error('Invalid or expired reset link. Please request a new one.');
+        } else if (data.session) {
+          console.log('Session set successfully');
+          setTokenError(false);
+        } else {
+          console.log('No session returned');
+          setTokenError(true);
+        }
+      } catch (error) {
+        console.error('Error checking reset token:', error);
+        setTokenError(true);
+        toast.error('An error occurred while validating the reset link.');
+      } finally {
+        setCheckingToken(false);
+      }
+    };
+
+    checkResetToken();
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,26 +87,82 @@ const ResetPassword = () => {
       });
 
       if (error) {
+        console.error('Error updating password:', error);
         toast.error(error.message || 'Failed to update password');
       } else {
         toast.success('Password updated successfully!');
-        navigate('/dashboard');
+        // Sign out after password reset to ensure clean state
+        await supabase.auth.signOut();
+        navigate('/login');
       }
     } catch (error) {
+      console.error('Unexpected error:', error);
       toast.error('An unexpected error occurred');
+    } finally {
+      setIsLoading(false);
     }
-
-    setIsLoading(false);
   };
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  if (!isValidToken) {
+  const requestNewResetLink = () => {
+    navigate('/login');
+  };
+
+  if (checkingToken) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  if (tokenError) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4">
+        <div className="max-w-md w-full space-y-8">
+          <div className="text-center">
+            <div className="flex items-center justify-center mb-6">
+              <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center mr-3">
+                <Rocket className="h-7 w-7 text-white" />
+              </div>
+              <span className="text-2xl font-bold text-gray-900">RFQRocket</span>
+            </div>
+          </div>
+
+          <Card className="shadow-lg">
+            <CardHeader>
+              <CardTitle className="text-xl text-center flex items-center justify-center gap-2">
+                <AlertCircle className="h-5 w-5 text-red-500" />
+                Invalid Reset Link
+              </CardTitle>
+              <CardDescription className="text-center">
+                This password reset link is invalid or has expired
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="text-center space-y-4">
+                <p className="text-sm text-gray-600">
+                  Password reset links expire after a short time for security reasons. 
+                  Please request a new password reset link.
+                </p>
+                <Button
+                  onClick={requestNewResetLink}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  Request New Reset Link
+                </Button>
+                <div className="text-center">
+                  <Link to="/login" className="text-sm text-blue-600 hover:text-blue-800 font-medium">
+                    Back to Sign In
+                  </Link>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }
