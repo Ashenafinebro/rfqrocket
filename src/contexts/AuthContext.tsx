@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -251,10 +250,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (session?.user) {
         console.log('Initial session found, checking subscription');
-        // Use setTimeout to ensure checkSubscription runs after state updates
-        setTimeout(() => {
-          checkSubscription();
-        }, 100);
+        // Check subscription after user is set
+        checkSubscription();
       }
     });
 
@@ -278,10 +275,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             proposal_limit: 1
           });
           
-          // Use setTimeout to ensure the subscription check happens after state updates
+          // Reset session count to 0 first, then sync with database
+          setSessionRfqCount(0);
+          
+          // Wait a bit to ensure user state is properly set, then check subscription
           setTimeout(() => {
-            checkSubscription(); // This will sync session count with database
-          }, 100);
+            checkSubscription();
+          }, 500);
         }
         
         if (event === 'SIGNED_OUT') {
@@ -303,6 +303,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // Add effect to trigger checkSubscription when user changes
+  useEffect(() => {
+    if (user && !loading) {
+      console.log('User effect triggered, checking subscription');
+      checkSubscription();
+    }
+  }, [user?.id]);
 
   return (
     <AuthContext.Provider value={{ 
