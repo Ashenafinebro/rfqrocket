@@ -51,6 +51,26 @@ const Signup = () => {
     }
   };
 
+  const checkEmailExists = async (email: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('email', email)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error checking email:', error);
+        return false;
+      }
+
+      return !!data;
+    } catch (error) {
+      console.error('Error checking email exists:', error);
+      return false;
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.agreeToTerms) {
@@ -67,6 +87,14 @@ const Signup = () => {
     setIsLoading(true);
 
     console.log('Attempting signup for email:', formData.email);
+
+    // Check if email already exists in profiles table
+    const emailExists = await checkEmailExists(formData.email);
+    if (emailExists) {
+      toast.error('An account with this email already exists. Please sign in instead.');
+      setIsLoading(false);
+      return;
+    }
 
     const { error } = await signUp(formData.email, formData.password, {
       business_name: formData.businessName,
