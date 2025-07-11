@@ -57,15 +57,14 @@ const Signup = () => {
       const { data, error } = await supabase
         .from('profiles')
         .select('email')
-        .eq('email', email)
-        .single();
+        .eq('email', email);
 
-      if (error && error.code !== 'PGRST116') {
+      if (error) {
         console.error('Error checking user existence:', error);
         return false;
       }
 
-      return !!data;
+      return data && data.length > 0;
     } catch (error) {
       console.error('Error checking user existence:', error);
       return false;
