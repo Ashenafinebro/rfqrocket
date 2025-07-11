@@ -224,9 +224,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(session?.user ?? null);
         setLoading(false);
         
-        if (session?.user && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
-          console.log('User signed in, checking subscription');
-          checkSubscription();
+        if (session?.user && event === 'SIGNED_IN') {
+          console.log('User signed in, checking subscription immediately');
+          // Use setTimeout to ensure the subscription check happens after state update
+          setTimeout(() => {
+            checkSubscription();
+          }, 100);
         }
         
         if (event === 'SIGNED_OUT') {

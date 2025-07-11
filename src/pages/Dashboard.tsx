@@ -36,15 +36,23 @@ const Dashboard = () => {
       // Reset subscription loaded state when user changes
       setSubscriptionLoaded(false);
       
-      // Wait for subscription check to complete
-      const timer = setTimeout(() => {
-        setSubscriptionLoaded(true);
-      }, 500); // Increased delay to ensure subscription data is loaded
-      return () => clearTimeout(timer);
+      // Wait for subscription check to complete - check if we have actual subscription data
+      const checkSubscriptionData = () => {
+        // Consider subscription loaded if we have both rfq_count and rfq_limit defined
+        if (subscription.rfq_count !== undefined && subscription.rfq_limit !== undefined) {
+          setSubscriptionLoaded(true);
+        } else {
+          // If data is not ready, check again after a short delay
+          setTimeout(checkSubscriptionData, 200);
+        }
+      };
+      
+      // Start checking subscription data
+      setTimeout(checkSubscriptionData, 300);
     } else if (!loading && !user) {
       setSubscriptionLoaded(true);
     }
-  }, [loading, user, subscription.subscribed, subscription.rfq_count]); // Added dependencies to trigger when subscription changes
+  }, [loading, user, subscription.subscribed, subscription.rfq_count, subscription.rfq_limit]);
 
   const handleFileProcessed = async (data: ProcessedData) => {
     setProcessedData(data);
