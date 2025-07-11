@@ -1,139 +1,83 @@
 
-import Hero from '@/components/Hero';
-import FeatureCard from '@/components/FeatureCard';
-import { Rocket, Users, Zap, CheckCircle, Upload, Download } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Link } from 'react-router-dom';
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Upload, FileText, Zap, Download } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const Index = () => {
-  const features = [
-    {
-      title: 'Fast Processing',
-      description: 'Upload your solicitation and get professional RFQs in minutes, not hours.',
-      icon: Rocket,
-    },
-    {
-      title: 'AI-Powered Analysis',
-      description: 'Our AI extracts key requirements and creates tailored responses automatically.',
-      icon: Users,
-    },
-    {
-      title: 'Professional Output',
-      description: 'Generate clean, formatted documents ready for submission.',
-      icon: Zap,
-    },
-  ];
-
   return (
-    <div className="min-h-screen">
-      <Hero />
-      
-      {/* Process Steps */}
-      <section className="py-16 px-4 bg-gray-50">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold mb-4 text-gray-900">How It Works</h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Simple three-step process to transform your solicitation documents into professional RFQs.
-            </p>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="text-center bg-white p-8 rounded-xl shadow-sm">
-              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Upload className="h-8 w-8 text-blue-600" />
-              </div>
-              <h3 className="text-xl font-semibold mb-4 text-gray-900">Upload Document</h3>
-              <p className="text-gray-600">Upload your solicitation PDF, DOCX, or TXT file</p>
-            </div>
-            
-            <div className="text-center bg-white p-8 rounded-xl shadow-sm">
-              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <CheckCircle className="h-8 w-8 text-blue-600" />
-              </div>
-              <h3 className="text-xl font-semibold mb-4 text-gray-900">AI Processing</h3>
-              <p className="text-gray-600">Our AI extracts all key requirements and data</p>
-            </div>
-            
-            <div className="text-center bg-white p-8 rounded-xl shadow-sm">
-              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Download className="h-8 w-8 text-blue-600" />
-              </div>
-              <h3 className="text-xl font-semibold mb-4 text-gray-900">Generate RFQ</h3>
-              <p className="text-gray-600">Download or email a professional RFQ document</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Features Section */}
-      <section className="py-20 px-4 bg-white">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold mb-4">Why Choose RFQRocket?</h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Everything you need to streamline your government contracting process.
-            </p>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {features.map((feature) => (
-              <FeatureCard
-                key={feature.title}
-                title={feature.title}
-                description={feature.description}
-                icon={feature.icon}
-              />
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Industries Section */}
-      <section className="py-16 px-4 bg-gray-50">
-        <div className="max-w-6xl mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-12 text-gray-900">Supporting Businesses Across Industries</h2>
-          
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-8 text-center">
-            {[
-              { name: 'Janitorial', icon: '🧹' },
-              { name: 'Consulting', icon: '💼' },
-              { name: 'IT Services', icon: '💻' },
-              { name: 'Staffing', icon: '👥' },
-              { name: 'Supplies', icon: '📦' },
-            ].map((industry) => (
-              <div key={industry.name}>
-                <div className="text-4xl mb-3">{industry.icon}</div>
-                <p className="font-medium text-gray-700">{industry.name}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="py-20 px-4 bg-white">
-        <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-3xl font-bold mb-4 text-gray-900">
-            Ready to simplify your government contracting process?
-          </h2>
-          <p className="text-xl text-gray-600 mb-8">
-            Start generating professional RFQ documents in minutes, not hours.
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      <div className="container mx-auto px-4 py-16">
+        {/* Hero Section */}
+        <div className="text-center mb-16">
+          <h1 className="text-5xl font-bold text-gray-900 mb-6">
+            RFQ <span className="text-blue-600">Rocket</span>
+          </h1>
+          <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
+            Transform government solicitations into professional RFQs and winning proposals with AI-powered automation
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/rfq-processor">
-              <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 text-lg rounded-lg">
-                Get Started for Free
-              </Button>
-            </Link>
-            <Link to="/pricing">
-              <Button variant="outline" size="lg" className="px-8 py-4 text-lg rounded-lg border-gray-300">
-                View Pricing Plans
-              </Button>
-            </Link>
+          <div className="flex gap-4 justify-center">
+            <Button asChild size="lg" className="bg-blue-600 hover:bg-blue-700">
+              <Link to="/rfq-processor">
+                Get Started <Upload className="ml-2 h-5 w-5" />
+              </Link>
+            </Button>
+            <Button asChild variant="outline" size="lg">
+              <Link to="/how-it-works">
+                How It Works
+              </Link>
+            </Button>
           </div>
         </div>
-      </section>
+
+        {/* Features Grid */}
+        <div className="grid md:grid-cols-3 gap-8 mb-16">
+          <Card className="p-6 text-center hover:shadow-lg transition-shadow">
+            <div className="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Upload className="h-8 w-8 text-blue-600" />
+            </div>
+            <h3 className="text-xl font-semibold mb-3">Upload Documents</h3>
+            <p className="text-gray-600">
+              Upload government solicitations in PDF or Word format for instant processing
+            </p>
+          </Card>
+
+          <Card className="p-6 text-center hover:shadow-lg transition-shadow">
+            <div className="bg-green-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Zap className="h-8 w-8 text-green-600" />
+            </div>
+            <h3 className="text-xl font-semibold mb-3">AI Processing</h3>
+            <p className="text-gray-600">
+              Advanced AI analyzes requirements and generates professional RFQs automatically
+            </p>
+          </Card>
+
+          <Card className="p-6 text-center hover:shadow-lg transition-shadow">
+            <div className="bg-purple-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Download className="h-8 w-8 text-purple-600" />
+            </div>
+            <h3 className="text-xl font-semibold mb-3">Export & Send</h3>
+            <p className="text-gray-600">
+              Download polished RFQs and proposals ready to send to vendors
+            </p>
+          </Card>
+        </div>
+
+        {/* CTA Section */}
+        <div className="text-center bg-white rounded-lg p-8 shadow-md">
+          <h2 className="text-3xl font-bold text-gray-900 mb-4">
+            Ready to Streamline Your RFQ Process?
+          </h2>
+          <p className="text-gray-600 mb-6">
+            Join thousands of professionals who save hours every week with RFQ Rocket
+          </p>
+          <Button asChild size="lg" className="bg-blue-600 hover:bg-blue-700">
+            <Link to="/rfq-processor">
+              Start Processing Documents <FileText className="ml-2 h-5 w-5" />
+            </Link>
+          </Button>
+        </div>
+      </div>
     </div>
   );
 };
