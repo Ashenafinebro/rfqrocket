@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -39,6 +38,7 @@ interface AuthContextType {
   sessionRfqCount: number;
   canGenerateRFQ: () => boolean;
   canDownload: () => boolean;
+  openCustomerPortal: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -115,7 +115,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const resetPassword = async (email: string) => {
     try {
-      // Use clean URL without hash or query params for the reset password URL
       const baseUrl = window.location.origin;
       const redirectUrl = `${baseUrl}/reset-password`;
       
@@ -130,7 +129,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { error };
       }
       
-      // Log success for debugging
       console.log('Password reset email sent successfully');
       return { error: null };
     } catch (error) {
@@ -160,22 +158,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const databaseRfqCount = data.rfq_count || 0;
       console.log('Database RFQ count:', databaseRfqCount);
       
-      // Update session count with database value
       console.log('Updating session RFQ count from', sessionRfqCount, 'to', databaseRfqCount);
       setSessionRfqCount(databaseRfqCount);
       
-      // Set usage limits based on plan
-      let rfqLimit = 1; // Free/demo default
-      let proposalLimit = 1; // Free/demo default
+      let rfqLimit = 1;
+      let proposalLimit = 1;
       
       if (data.subscribed && data.plan) {
         console.log('User has active subscription:', data.plan);
         if (data.plan === 'Premium') {
-          rfqLimit = 10; // Premium: Up to 10 RFQs/month
+          rfqLimit = 10;
           proposalLimit = 10;
         } else if (data.plan === 'Professional') {
-          rfqLimit = null; // Professional: Unlimited
-          proposalLimit = null; // Professional: Unlimited
+          rfqLimit = null;
+          proposalLimit = null;
         }
       } else {
         console.log('User is in demo mode');
@@ -201,28 +197,52 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const canGenerateRFQ = () => {
-    // If user is not subscribed, demo limit of 1
     if (!subscription.subscribed) {
       return sessionRfqCount < 1;
     }
     
-    // If Professional plan, unlimited
     if (subscription.plan === 'Professional') {
       return true;
     }
     
-    // If Premium plan, limit to 10
     if (subscription.plan === 'Premium') {
       return sessionRfqCount < 10;
     }
     
-    // Default fallback for other plans
     return sessionRfqCount < 1;
   };
 
   const canDownload = () => {
-    // Only subscribed users can download
     return subscription.subscribed;
+  };
+
+  const openCustomerPortal = async () => {
+    if (!user) {
+      toast.error('Please sign in to manage your subscription');
+      return;
+    }
+
+    try {
+      console.log('Opening customer portal for user:', user.email);
+      const { data, error } = await supabase.functions.invoke('customer-portal');
+      
+      if (error) {
+        console.error('Error opening customer portal:', error);
+        toast.error('Failed to open customer portal. Please try again.');
+        return;
+      }
+      
+      if (data.url) {
+        console.log('Redirecting to customer portal:', data.url);
+        window.open(data.url, '_blank');
+        toast.success('Opening subscription management portal...');
+      } else {
+        toast.error('Unable to open customer portal. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error opening customer portal:', error);
+      toast.error('Failed to open customer portal. Please try again.');
+    }
   };
 
   const incrementRFQCount = async () => {
@@ -231,12 +251,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       console.log('Incrementing RFQ count for user:', user.id);
       
-      // Check if user can generate before incrementing
       if (!canGenerateRFQ()) {
         throw new Error('RFQ generation limit reached');
       }
       
-      // Increment in database first
       const { error } = await supabase.functions.invoke('increment-usage', {
         body: { type: 'rfq' }
       });
@@ -246,12 +264,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw error;
       }
       
-      // Update session count immediately after successful database increment
       const newCount = sessionRfqCount + 1;
       console.log('Updating session count after successful increment:', newCount);
       setSessionRfqCount(newCount);
       
-      // Update subscription state to reflect new count
       setSubscription(prev => ({
         ...prev,
         rfq_count: newCount
@@ -272,7 +288,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await supabase.functions.invoke('increment-usage', {
         body: { type: 'proposal' }
       });
-      await checkSubscription(); // Refresh subscription data
+      await checkSubscription();
       console.log('Proposal count incremented successfully');
     } catch (error) {
       console.error('Error incrementing proposal count:', error);
@@ -303,19 +319,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
-    // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       setLoading(false);
       
       if (session?.user) {
         console.log('Initial session found, checking subscription');
-        // Check subscription after user is set
         checkSubscription();
       }
     });
 
-    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log('Auth state changed:', event, session?.user?.email);
@@ -324,7 +337,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         if (session?.user && event === 'SIGNED_IN') {
           console.log('User signed in, checking subscription and syncing session count');
-          // Reset subscription to default state
           setSubscription({
             subscribed: false,
             plan: null,
@@ -335,10 +347,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             proposal_limit: 1
           });
           
-          // Reset session count to 0 first, then sync with database
           setSessionRfqCount(0);
           
-          // Wait a bit to ensure user state is properly set, then check subscription
           setTimeout(() => {
             checkSubscription();
           }, 500);
@@ -364,7 +374,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => subscription.unsubscribe();
   }, []);
 
-  // Add effect to trigger checkSubscription when user changes
   useEffect(() => {
     if (user && !loading) {
       console.log('User effect triggered, checking subscription');
@@ -390,7 +399,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       incrementProposalCount,
       sessionRfqCount,
       canGenerateRFQ,
-      canDownload
+      canDownload,
+      openCustomerPortal
     }}>
       {children}
     </AuthContext.Provider>
