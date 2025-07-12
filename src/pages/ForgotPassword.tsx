@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,8 +24,9 @@ const ForgotPassword = () => {
     setIsLoading(true);
 
     try {
-      // Use the current origin to construct the reset password URL
-      const redirectUrl = `${window.location.origin}/reset-password`;
+      // Use the current origin without hash or query params for the reset password URL
+      const baseUrl = window.location.origin;
+      const redirectUrl = `${baseUrl}/reset-password`;
       
       console.log('Sending password reset email with redirect URL:', redirectUrl);
       

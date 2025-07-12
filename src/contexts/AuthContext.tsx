@@ -112,8 +112,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const resetPassword = async (email: string) => {
     try {
-      // Use the current origin to construct the reset password URL
-      const redirectUrl = `${window.location.origin}/reset-password`;
+      // Use clean URL without hash or query params for the reset password URL
+      const baseUrl = window.location.origin;
+      const redirectUrl = `${baseUrl}/reset-password`;
       
       console.log('Sending password reset email with redirect URL:', redirectUrl);
       
