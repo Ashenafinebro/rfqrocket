@@ -5,12 +5,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Lock, Rocket, AlertCircle, Eye, EyeOff, CheckCircle } from 'lucide-react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 const ResetPassword = () => {
-  const [searchParams] = useSearchParams();
+  const location = useLocation();
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     password: '',
@@ -26,14 +26,21 @@ const ResetPassword = () => {
   useEffect(() => {
     const checkResetToken = async () => {
       try {
-        // Get URL parameters
-        const accessToken = searchParams.get('access_token');
-        const refreshToken = searchParams.get('refresh_token');
-        const type = searchParams.get('type');
-        const error = searchParams.get('error');
-        const errorDescription = searchParams.get('error_description');
+        // Check both URL search params and hash fragment
+        const urlParams = new URLSearchParams(location.search);
+        const hashParams = new URLSearchParams(location.hash.substring(1));
+        
+        // Try to get tokens from either location
+        const accessToken = urlParams.get('access_token') || hashParams.get('access_token');
+        const refreshToken = urlParams.get('refresh_token') || hashParams.get('refresh_token');
+        const type = urlParams.get('type') || hashParams.get('type');
+        const error = urlParams.get('error') || hashParams.get('error');
+        const errorDescription = urlParams.get('error_description') || hashParams.get('error_description');
 
-        console.log('Reset password URL params:', { 
+        console.log('Reset password URL analysis:', { 
+          fullUrl: window.location.href,
+          search: location.search,
+          hash: location.hash,
           accessToken: !!accessToken, 
           refreshToken: !!refreshToken, 
           type, 
@@ -54,13 +61,14 @@ const ResetPassword = () => {
         if (!accessToken || !refreshToken || type !== 'recovery') {
           console.log('Missing required parameters or invalid type');
           setTokenError(true);
-          toast.error('Invalid reset link. Please request a new password reset.');
+          toast.error('Invalid reset link format. Please request a new password reset.');
           setCheckingToken(false);
           return;
         }
 
-        // Verify the session without consuming the token
+        // Try to set the session with the tokens
         try {
+          console.log('Attempting to set session with tokens...');
           const { data, error: sessionError } = await supabase.auth.setSession({
             access_token: accessToken,
             refresh_token: refreshToken
@@ -69,19 +77,20 @@ const ResetPassword = () => {
           if (sessionError) {
             console.error('Error setting session:', sessionError);
             setTokenError(true);
-            toast.error('Invalid or expired reset link. Please request a new one.');
+            toast.error('Invalid or expired reset tokens. Please request a new reset link.');
           } else if (data.session) {
             console.log('Session set successfully for password reset');
             setTokenError(false);
+            toast.success('Reset link verified! You can now set your new password.');
           } else {
-            console.log('No session returned');
+            console.log('No session returned despite no error');
             setTokenError(true);
             toast.error('Unable to verify reset link. Please request a new one.');
           }
         } catch (sessionError) {
           console.error('Session error:', sessionError);
           setTokenError(true);
-          toast.error('Invalid or expired reset link. Please request a new one.');
+          toast.error('Failed to verify reset link. Please request a new one.');
         }
       } catch (error) {
         console.error('Error checking reset token:', error);
@@ -93,7 +102,7 @@ const ResetPassword = () => {
     };
 
     checkResetToken();
-  }, [searchParams]);
+  }, [location]);
 
   const validatePassword = (password: string) => {
     if (password.length < 8) {
@@ -128,6 +137,7 @@ const ResetPassword = () => {
     setIsLoading(true);
 
     try {
+      console.log('Attempting to update password...');
       const { error } = await supabase.auth.updateUser({
         password: formData.password
       });
@@ -141,6 +151,7 @@ const ResetPassword = () => {
           toast.error(error.message || 'Failed to update password');
         }
       } else {
+        console.log('Password updated successfully');
         setResetSuccess(true);
         toast.success('Password updated successfully!');
       }
@@ -199,9 +210,16 @@ const ResetPassword = () => {
               <div className="text-center space-y-4">
                 <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                   <p className="text-sm text-red-800">
-                    Password reset links expire after 1 hour for security reasons. 
-                    If you just received this link, it may have been used already or there may be a technical issue.
-                    Please request a new password reset.
+                    The reset link may be missing required authentication tokens. This can happen if:
+                  </p>
+                  <ul className="text-sm text-red-800 mt-2 list-disc list-inside space-y-1">
+                    <li>The link was copied incorrectly</li>
+                    <li>The email client modified the link</li>
+                    <li>The link has expired (1 hour limit)</li>
+                    <li>The link was already used</li>
+                  </ul>
+                  <p className="text-sm text-red-800 mt-2">
+                    Please request a new password reset to get a fresh link.
                   </p>
                 </div>
                 <Link to="/forgot-password">
