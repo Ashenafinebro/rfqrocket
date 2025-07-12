@@ -112,8 +112,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const resetPassword = async (email: string) => {
     try {
-      // Use the production URL for password reset redirect
-      const redirectUrl = `https://rfqrocket.com/reset-password`;
+      // Use the current origin to construct the reset password URL
+      const redirectUrl = `${window.location.origin}/reset-password`;
       
       console.log('Sending password reset email with redirect URL:', redirectUrl);
       
