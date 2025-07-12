@@ -15,7 +15,7 @@ interface ProcessedData {
 }
 
 const Dashboard = () => {
-  const { user, subscription, loading, subscriptionLoading, sessionRfqCount } = useAuth();
+  const { user, subscription, loading, subscriptionLoading, sessionRfqCount, canGenerateRFQ } = useAuth();
   const navigate = useNavigate();
   const [processedData, setProcessedData] = useState<ProcessedData | null>(null);
 
@@ -24,8 +24,7 @@ const Dashboard = () => {
   const rfqLimit = subscription.rfq_limit;
   const proposalLimit = subscription.proposal_limit;
 
-  // Use sessionRfqCount for UI logic
-  const demoLimitReached = isDemo && rfqLimit !== null && sessionRfqCount >= rfqLimit;
+  const demoLimitReached = isDemo && !canGenerateRFQ();
 
   console.log('Dashboard render - sessionRfqCount:', sessionRfqCount, 'demoLimitReached:', demoLimitReached);
 
@@ -49,9 +48,38 @@ const Dashboard = () => {
     navigate('/pricing');
   };
 
-  const getRemainingText = (count: number, limit: number | null) => {
+  const getRemainingText = (count: number, limit: number | null, planName?: string) => {
     if (limit === null) return 'Unlimited';
+    
+    if (!subscription.subscribed) {
+      return `${Math.max(0, limit - count)} remaining`;
+    }
+    
+    if (planName === 'Premium') {
+      return `${Math.max(0, 10 - count)} remaining`;
+    }
+    
     return `${Math.max(0, limit - count)} remaining`;
+  };
+
+  const getUsageDisplayText = () => {
+    if (!subscription.subscribed) {
+      return `You have ${getRemainingText(sessionRfqCount, rfqLimit)} RFQ generations in demo mode. Downloads are disabled in demo mode.`;
+    }
+    
+    if (subscription.plan === 'Premium') {
+      const remaining = Math.max(0, 10 - sessionRfqCount);
+      if (remaining === 0) {
+        return 'You have reached your Premium plan limit of 10 RFQs this month. Upgrade to Professional for unlimited access.';
+      }
+      return `Premium Plan: ${remaining} RFQ generations remaining this month.`;
+    }
+    
+    if (subscription.plan === 'Professional') {
+      return 'Professional Plan: Unlimited RFQ generations and downloads.';
+    }
+    
+    return 'Subscription active with download access.';
   };
 
   // Show loading state while auth is loading or subscription data is being fetched
@@ -94,10 +122,7 @@ const Dashboard = () => {
                   <p className={`text-sm mt-1 ${
                     demoLimitReached ? 'text-red-700' : 'text-amber-700'
                   }`}>
-                    {demoLimitReached 
-                      ? 'You have used your free RFQ generation. Upgrade to continue creating RFQs.'
-                      : `You have ${getRemainingText(sessionRfqCount, rfqLimit)} RFQ generations in demo mode. Downloads are disabled in demo mode.`
-                    }
+                    {getUsageDisplayText()}
                   </p>
                 </div>
               </div>
@@ -114,19 +139,41 @@ const Dashboard = () => {
 
         {/* Subscription Status Banner - Show for subscribers */}
         {subscription.subscribed && (
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-8">
+          <div className={`border rounded-lg p-4 mb-8 ${
+            subscription.plan === 'Premium' && sessionRfqCount >= 10 
+              ? 'bg-orange-50 border-orange-200' 
+              : 'bg-green-50 border-green-200'
+          }`}>
             <div className="flex items-center justify-between">
               <div className="flex items-start gap-3">
-                <CheckCircle className="h-5 w-5 text-green-500 mt-0.5" />
+                <CheckCircle className={`h-5 w-5 mt-0.5 ${
+                  subscription.plan === 'Premium' && sessionRfqCount >= 10 
+                    ? 'text-orange-500' 
+                    : 'text-green-500'
+                }`} />
                 <div>
-                  <h3 className="font-semibold text-green-800">{subscription.plan} Plan Active</h3>
-                  <p className="text-green-700 text-sm mt-1">
-                    RFQs: {getRemainingText(sessionRfqCount, rfqLimit)} | 
-                    Proposals: {getRemainingText(proposalCount, proposalLimit)}
+                  <h3 className={`font-semibold ${
+                    subscription.plan === 'Premium' && sessionRfqCount >= 10 
+                      ? 'text-orange-800' 
+                      : 'text-green-800'
+                  }`}>
+                    {subscription.plan} Plan Active
+                    {subscription.plan === 'Premium' && sessionRfqCount >= 10 && ' - Limit Reached'}
+                  </h3>
+                  <p className={`text-sm mt-1 ${
+                    subscription.plan === 'Premium' && sessionRfqCount >= 10 
+                      ? 'text-orange-700' 
+                      : 'text-green-700'
+                  }`}>
+                    {getUsageDisplayText()}
                   </p>
                 </div>
               </div>
-              <Badge variant="default" className="bg-green-600">
+              <Badge variant="default" className={
+                subscription.plan === 'Premium' && sessionRfqCount >= 10 
+                  ? 'bg-orange-600' 
+                  : 'bg-green-600'
+              }>
                 <Crown className="h-4 w-4 mr-1" />
                 {subscription.plan}
               </Badge>
@@ -293,8 +340,8 @@ const Dashboard = () => {
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">RFQ Remaining</span>
-                  <span className={`font-semibold ${demoLimitReached ? 'text-red-600' : ''}`}>
-                    {getRemainingText(sessionRfqCount, rfqLimit)}
+                  <span className={`font-semibold ${!canGenerateRFQ() ? 'text-red-600' : ''}`}>
+                    {getRemainingText(sessionRfqCount, rfqLimit, subscription.plan || undefined)}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">

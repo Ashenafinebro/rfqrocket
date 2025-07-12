@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -24,7 +25,7 @@ interface RFQGeneratorProps {
 }
 
 const RFQGenerator: React.FC<RFQGeneratorProps> = ({ onRFQGenerated, data }) => {
-  const { user, subscription, incrementRFQCount, sessionRfqCount } = useAuth();
+  const { user, subscription, incrementRFQCount, sessionRfqCount, canGenerateRFQ, canDownload } = useAuth();
   const [formData, setFormData] = useState({
     projectTitle: '',
     projectDescription: '',
@@ -41,9 +42,6 @@ const RFQGenerator: React.FC<RFQGeneratorProps> = ({ onRFQGenerated, data }) => 
 
   const hasSubscription = subscription.subscribed;
   const rfqLimit = subscription.rfq_limit;
-  
-  // Use sessionRfqCount for UI logic
-  const canGenerate = rfqLimit === null || sessionRfqCount < rfqLimit;
 
   // Process data only once when component mounts with data
   React.useEffect(() => {
@@ -52,7 +50,7 @@ const RFQGenerator: React.FC<RFQGeneratorProps> = ({ onRFQGenerated, data }) => 
       setHasProcessedData(true);
       
       // Only increment count if user can still generate
-      if (canGenerate) {
+      if (canGenerateRFQ()) {
         const trackDataRFQUsage = async () => {
           try {
             await incrementRFQCount();
@@ -67,7 +65,7 @@ const RFQGenerator: React.FC<RFQGeneratorProps> = ({ onRFQGenerated, data }) => 
         toast.error('Usage limit reached. Please upgrade to continue generating RFQs.');
       }
     }
-  }, [data?.rfqContent, hasProcessedData, canGenerate, incrementRFQCount]);
+  }, [data?.rfqContent, hasProcessedData, canGenerateRFQ, incrementRFQCount]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -76,8 +74,11 @@ const RFQGenerator: React.FC<RFQGeneratorProps> = ({ onRFQGenerated, data }) => 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!canGenerate) {
-      toast.error('Usage limit reached. Please upgrade to continue generating RFQs.');
+    if (!canGenerateRFQ()) {
+      const limitMessage = hasSubscription 
+        ? `You've reached your ${subscription.plan} plan limit of ${rfqLimit} RFQs per month.`
+        : 'Usage limit reached. Please upgrade to continue generating RFQs.';
+      toast.error(limitMessage);
       return;
     }
 
@@ -121,7 +122,7 @@ const RFQGenerator: React.FC<RFQGeneratorProps> = ({ onRFQGenerated, data }) => 
   };
 
   const handleDownload = () => {
-    if (!hasSubscription) {
+    if (!canDownload()) {
       toast.error('Downloads are only available with a paid subscription. Please upgrade to download your RFQ.');
       return;
     }
@@ -140,8 +141,35 @@ const RFQGenerator: React.FC<RFQGeneratorProps> = ({ onRFQGenerated, data }) => 
   };
 
   const getRemainingText = () => {
-    if (rfqLimit === null) return 'Unlimited';
-    return `${Math.max(0, rfqLimit - sessionRfqCount)} remaining`;
+    if (!hasSubscription) {
+      return `${Math.max(0, 1 - sessionRfqCount)} remaining`;
+    }
+    
+    if (subscription.plan === 'Professional') {
+      return 'Unlimited';
+    }
+    
+    if (subscription.plan === 'Premium') {
+      return `${Math.max(0, 10 - sessionRfqCount)} remaining`;
+    }
+    
+    return 'Unknown';
+  };
+
+  const getUsageMessage = () => {
+    if (!hasSubscription) {
+      return `Demo Mode: ${sessionRfqCount}/1 RFQ generations used.`;
+    }
+    
+    if (subscription.plan === 'Professional') {
+      return `Professional Plan: ${sessionRfqCount} RFQs generated (Unlimited)`;
+    }
+    
+    if (subscription.plan === 'Premium') {
+      return `Premium Plan: ${sessionRfqCount}/10 RFQs generated this month`;
+    }
+    
+    return `${subscription.plan} Plan: ${sessionRfqCount} RFQs generated`;
   };
 
   return (
@@ -161,8 +189,8 @@ const RFQGenerator: React.FC<RFQGeneratorProps> = ({ onRFQGenerated, data }) => 
         <Alert>
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
-            Demo Mode: {sessionRfqCount}/{rfqLimit || 1} RFQ generations used.
-            {!canGenerate && (
+            {getUsageMessage()}
+            {!canGenerateRFQ() && (
               <span className="text-red-600 font-medium ml-2">
                 Upgrade to continue generating RFQs.
               </span>
@@ -173,7 +201,7 @@ const RFQGenerator: React.FC<RFQGeneratorProps> = ({ onRFQGenerated, data }) => 
         <Alert>
           <FileText className="h-4 w-4" />
           <AlertDescription>
-            {subscription.plan} Plan: {getRemainingText()} RFQ generations.
+            {getUsageMessage()} | {getRemainingText()} RFQ generations.
           </AlertDescription>
         </Alert>
       )}
@@ -293,13 +321,13 @@ const RFQGenerator: React.FC<RFQGeneratorProps> = ({ onRFQGenerated, data }) => 
 
               <Button 
                 type="submit" 
-                disabled={isGenerating || !canGenerate}
+                disabled={isGenerating || !canGenerateRFQ()}
                 className="w-full"
               >
-                {!canGenerate ? (
+                {!canGenerateRFQ() ? (
                   <>
                     <Lock className="mr-2 h-4 w-4" />
-                    Upgrade to Generate RFQ
+                    {hasSubscription ? 'Monthly Limit Reached' : 'Upgrade to Generate RFQ'}
                   </>
                 ) : isGenerating ? (
                   'Generating RFQ...'
@@ -321,7 +349,7 @@ const RFQGenerator: React.FC<RFQGeneratorProps> = ({ onRFQGenerated, data }) => 
                 Generated RFQ
               </span>
               <div className="flex gap-2">
-                {!hasSubscription && (
+                {!canDownload() && (
                   <Badge variant="outline" className="text-orange-600 border-orange-600">
                     <Lock className="h-3 w-3 mr-1" />
                     Preview Only
@@ -329,7 +357,7 @@ const RFQGenerator: React.FC<RFQGeneratorProps> = ({ onRFQGenerated, data }) => 
                 )}
                 <Button
                   onClick={handleDownload}
-                  disabled={!hasSubscription}
+                  disabled={!canDownload()}
                   size="sm"
                   variant="outline"
                   className="flex items-center gap-2"
@@ -344,7 +372,7 @@ const RFQGenerator: React.FC<RFQGeneratorProps> = ({ onRFQGenerated, data }) => 
             <div className="bg-gray-50 p-4 rounded-lg max-h-96 overflow-y-auto">
               <pre className="whitespace-pre-wrap text-sm">{generatedRFQ}</pre>
             </div>
-            {!hasSubscription && (
+            {!canDownload() && (
               <div className="mt-4 p-3 bg-orange-50 border border-orange-200 rounded-lg">
                 <p className="text-sm text-orange-800">
                   <Lock className="h-4 w-4 inline mr-2" />

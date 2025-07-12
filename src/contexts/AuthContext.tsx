@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -36,6 +37,8 @@ interface AuthContextType {
   incrementProposalCount: () => Promise<void>;
   subscriptionLoading: boolean;
   sessionRfqCount: number;
+  canGenerateRFQ: () => boolean;
+  canDownload: () => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -168,11 +171,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (data.subscribed && data.plan) {
         console.log('User has active subscription:', data.plan);
         if (data.plan === 'Premium') {
-          rfqLimit = 10;
+          rfqLimit = 10; // Premium: Up to 10 RFQs/month
           proposalLimit = 10;
         } else if (data.plan === 'Professional') {
-          rfqLimit = null; // Unlimited
-          proposalLimit = null; // Unlimited
+          rfqLimit = null; // Professional: Unlimited
+          proposalLimit = null; // Professional: Unlimited
         }
       } else {
         console.log('User is in demo mode');
@@ -197,11 +200,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const canGenerateRFQ = () => {
+    // If user is not subscribed, demo limit of 1
+    if (!subscription.subscribed) {
+      return sessionRfqCount < 1;
+    }
+    
+    // If Professional plan, unlimited
+    if (subscription.plan === 'Professional') {
+      return true;
+    }
+    
+    // If Premium plan, limit to 10
+    if (subscription.plan === 'Premium') {
+      return sessionRfqCount < 10;
+    }
+    
+    // Default fallback for other plans
+    return sessionRfqCount < 1;
+  };
+
+  const canDownload = () => {
+    // Only subscribed users can download
+    return subscription.subscribed;
+  };
+
   const incrementRFQCount = async () => {
     if (!user) return;
     
     try {
       console.log('Incrementing RFQ count for user:', user.id);
+      
+      // Check if user can generate before incrementing
+      if (!canGenerateRFQ()) {
+        throw new Error('RFQ generation limit reached');
+      }
       
       // Increment in database first
       const { error } = await supabase.functions.invoke('increment-usage', {
@@ -355,7 +388,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       resetPassword,
       incrementRFQCount,
       incrementProposalCount,
-      sessionRfqCount
+      sessionRfqCount,
+      canGenerateRFQ,
+      canDownload
     }}>
       {children}
     </AuthContext.Provider>
