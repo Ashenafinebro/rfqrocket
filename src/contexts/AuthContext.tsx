@@ -78,7 +78,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signUp = async (email: string, password: string, metadata?: any) => {
     try {
-      const redirectUrl = `https://rfqrocket.com/`;
+      const redirectUrl = `${window.location.origin}/`;
       
       const { error } = await supabase.auth.signUp({
         email,
@@ -96,7 +96,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signInWithGoogle = async () => {
     try {
-      const redirectUrl = `https://rfqrocket.com/`;
+      const redirectUrl = `${window.location.origin}/`;
       
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -123,9 +123,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (error) {
         console.error('Reset password error:', error);
+        return { error };
       }
       
-      return { error };
+      // Log success for debugging
+      console.log('Password reset email sent successfully');
+      return { error: null };
     } catch (error) {
       console.error('Reset password catch error:', error);
       return { error };

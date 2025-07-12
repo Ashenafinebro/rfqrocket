@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Lock, Rocket, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { Lock, Rocket, AlertCircle, Eye, EyeOff, CheckCircle } from 'lucide-react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -21,6 +21,7 @@ const ResetPassword = () => {
   const [checkingToken, setCheckingToken] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [resetSuccess, setResetSuccess] = useState(false);
 
   useEffect(() => {
     const checkResetToken = async () => {
@@ -107,9 +108,8 @@ const ResetPassword = () => {
         console.error('Error updating password:', error);
         toast.error(error.message || 'Failed to update password');
       } else {
+        setResetSuccess(true);
         toast.success('Password updated successfully!');
-        await supabase.auth.signOut();
-        navigate('/login');
       }
     } catch (error) {
       console.error('Unexpected error:', error);
@@ -123,14 +123,18 @@ const ResetPassword = () => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const requestNewResetLink = () => {
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
     navigate('/login');
   };
 
   if (checkingToken) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="text-gray-600">Verifying reset link...</p>
+        </div>
       </div>
     );
   }
@@ -160,21 +164,71 @@ const ResetPassword = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="text-center space-y-4">
-                <p className="text-sm text-gray-600">
-                  Password reset links expire after a short time for security reasons. 
-                  Please request a new password reset link.
-                </p>
-                <Button
-                  onClick={requestNewResetLink}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-                >
-                  Request New Reset Link
-                </Button>
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                  <p className="text-sm text-red-800">
+                    Password reset links expire after 1 hour for security reasons. 
+                    If you clicked this link from an email, please request a new password reset.
+                  </p>
+                </div>
+                <Link to="/forgot-password">
+                  <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white">
+                    Request New Reset Link
+                  </Button>
+                </Link>
                 <div className="text-center">
                   <Link to="/login" className="text-sm text-blue-600 hover:text-blue-800 font-medium">
                     Back to Sign In
                   </Link>
                 </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  if (resetSuccess) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4">
+        <div className="max-w-md w-full space-y-8">
+          <div className="text-center">
+            <div className="flex items-center justify-center mb-6">
+              <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center mr-3">
+                <Rocket className="h-7 w-7 text-white" />
+              </div>
+              <span className="text-2xl font-bold text-gray-900">RFQRocket</span>
+            </div>
+          </div>
+
+          <Card className="shadow-lg">
+            <CardHeader>
+              <CardTitle className="text-xl text-center flex items-center justify-center gap-2">
+                <CheckCircle className="h-6 w-6 text-green-600" />
+                Password Reset Complete
+              </CardTitle>
+              <CardDescription className="text-center">
+                Your password has been successfully updated
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="text-center space-y-4">
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
+                  <CheckCircle className="h-8 w-8 text-green-600" />
+                </div>
+                
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <p className="text-sm text-green-800">
+                    Your password has been successfully changed. You can now sign in with your new password.
+                  </p>
+                </div>
+
+                <Button
+                  onClick={handleSignOut}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  Continue to Sign In
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -203,7 +257,7 @@ const ResetPassword = () => {
 
         <Card className="shadow-lg">
           <CardHeader>
-            <CardTitle className="text-xl text-center">New Password</CardTitle>
+            <CardTitle className="text-xl text-center">Create New Password</CardTitle>
             <CardDescription className="text-center">
               Choose a strong password for your account
             </CardDescription>
@@ -274,7 +328,7 @@ const ResetPassword = () => {
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3"
                 disabled={isLoading}
               >
-                {isLoading ? 'Resetting Password...' : 'Reset Password'}
+                {isLoading ? 'Updating Password...' : 'Update Password'}
               </Button>
             </form>
 
