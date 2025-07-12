@@ -1,6 +1,5 @@
 
 /// <reference types="vite/client" />
-/// <reference types="node" />
 
 declare module '*.svg' {
   import React = require('react')
