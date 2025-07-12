@@ -26,34 +26,62 @@ const ResetPassword = () => {
   useEffect(() => {
     const checkResetToken = async () => {
       try {
+        // Get URL parameters
         const accessToken = searchParams.get('access_token');
         const refreshToken = searchParams.get('refresh_token');
         const type = searchParams.get('type');
+        const error = searchParams.get('error');
+        const errorDescription = searchParams.get('error_description');
 
-        console.log('Reset password URL params:', { accessToken: !!accessToken, refreshToken: !!refreshToken, type });
+        console.log('Reset password URL params:', { 
+          accessToken: !!accessToken, 
+          refreshToken: !!refreshToken, 
+          type, 
+          error,
+          errorDescription 
+        });
 
-        if (!accessToken || !refreshToken || type !== 'recovery') {
-          console.log('Missing required parameters or invalid type');
+        // Check for error parameters first
+        if (error) {
+          console.log('Error in URL parameters:', error, errorDescription);
           setTokenError(true);
+          toast.error(errorDescription || 'Invalid or expired reset link. Please request a new one.');
           setCheckingToken(false);
           return;
         }
 
-        const { data, error } = await supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken
-        });
+        // Check for required parameters
+        if (!accessToken || !refreshToken || type !== 'recovery') {
+          console.log('Missing required parameters or invalid type');
+          setTokenError(true);
+          toast.error('Invalid reset link. Please request a new password reset.');
+          setCheckingToken(false);
+          return;
+        }
 
-        if (error) {
-          console.error('Error setting session:', error);
+        // Verify the session without consuming the token
+        try {
+          const { data, error: sessionError } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken
+          });
+
+          if (sessionError) {
+            console.error('Error setting session:', sessionError);
+            setTokenError(true);
+            toast.error('Invalid or expired reset link. Please request a new one.');
+          } else if (data.session) {
+            console.log('Session set successfully for password reset');
+            setTokenError(false);
+          } else {
+            console.log('No session returned');
+            setTokenError(true);
+            toast.error('Unable to verify reset link. Please request a new one.');
+          }
+        } catch (sessionError) {
+          console.error('Session error:', sessionError);
           setTokenError(true);
           toast.error('Invalid or expired reset link. Please request a new one.');
-        } else if (data.session) {
-          console.log('Session set successfully');
-          setTokenError(false);
-        } else {
-          console.log('No session returned');
-          setTokenError(true);
         }
       } catch (error) {
         console.error('Error checking reset token:', error);
@@ -106,7 +134,12 @@ const ResetPassword = () => {
 
       if (error) {
         console.error('Error updating password:', error);
-        toast.error(error.message || 'Failed to update password');
+        if (error.message.includes('session_not_found') || error.message.includes('invalid_token')) {
+          toast.error('Your reset session has expired. Please request a new password reset.');
+          setTokenError(true);
+        } else {
+          toast.error(error.message || 'Failed to update password');
+        }
       } else {
         setResetSuccess(true);
         toast.success('Password updated successfully!');
@@ -167,7 +200,8 @@ const ResetPassword = () => {
                 <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                   <p className="text-sm text-red-800">
                     Password reset links expire after 1 hour for security reasons. 
-                    If you clicked this link from an email, please request a new password reset.
+                    If you just received this link, it may have been used already or there may be a technical issue.
+                    Please request a new password reset.
                   </p>
                 </div>
                 <Link to="/forgot-password">
